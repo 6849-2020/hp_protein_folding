@@ -18,7 +18,8 @@ using namespace std;
 
 constexpr int MAXDIM = 100;
 
-// This is used to display folded states.
+// This strucutre is used to represent folded states. It's in a format that's easy to print, but not
+// super space (or cache) efficient. We always index by y and then x coordinate.
 using Board = std::array<std::array<char, MAXDIM>, MAXDIM>;
 Board TheBoard;
 
@@ -45,8 +46,7 @@ void Search(
 	int fromX,        // y coordinate of last placed amino acid
 	int score,        // score of placed amino acids
 	int potential,    // number of empty squares that neighbor H amino acids
-	bool turned,      // ?
-	int distEstimate  // ?
+	bool turned       // ?
 );
 
 // Counts the number of Hs and empty squares appearing in the four squares that neighbor (x, y).
@@ -83,8 +83,7 @@ int main(int argc, const char *argv[]) {
 		(Pattern[0] == 'H' && Pattern[1] == 'H') ? 1 : 0,
 		// each amino acid could potentially have three additional H neighbors
 		3 * (Pattern[0] == 'H') + 3 * (Pattern[1] == 'H'),
-		false,
-		3
+		false
 	);
 	auto stop = std::chrono::high_resolution_clock::now();
 	float elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
@@ -104,17 +103,13 @@ int DX[] = { 0, 1, 0, -1 };
 int DY[] = { -1, 0, 1, 0 };
 
 
-// distEstimate is a guess (generally high) for path length from fromX, fromY back to start via empty squares
-// We use it as a heuristic for pruning. We will only prune if the estimate is too far, and the actual distance
-// (computed in that case) turns out to be too far.
 void Search(
 	int index,
 	int fromY,
 	int fromX,
 	int score,
 	int potential,
-	bool turned,
-	int distEstimate
+	bool turned
 ) {
 	/*
 	// Uncomment this to print intermediate chains.
@@ -149,7 +144,7 @@ void Search(
 		int const newx = fromX + 2 * DX[dir];
 		int const newy = fromY + 2 * DY[dir];
 
-		if (!(TheBoard[newy][newx] == ' ') || !(turned || dir != 3)) {
+		if (TheBoard[newy][newx] != ' ' || !(turned || dir != 3)) {
 			continue;
 		}
 
@@ -195,7 +190,7 @@ void Search(
 		if (newscore + delta >= MaxScore) {
 			TheBoard[newy][newx] = Pattern[index];
 			TheBoard[fromY + DY[dir]][fromX + DX[dir]] = (dir % 2 ? '-' : '|');
-			Search(index + 1, newy, newx, newscore, newp, turned || dir != 2, distEstimate + 2);	// typically add 2 to path?
+			Search(index + 1, newy, newx, newscore, newp, turned || dir != 2);
 			TheBoard[fromY + DY[dir]][fromX + DX[dir]] = ' ';
 			TheBoard[newy][newx] = ' ';
 		}
