@@ -53,9 +53,6 @@ void Search(
 void CountNeighbors(int x, int y, int &numH, int &numEmpty);
 void PrintBoard();
 
-int DistanceToStart(int x, int y);
-float Heuristic(int x, int y);
-
 
 // score = # of HH pairs
 // potential = # of H-empty pairs
@@ -142,20 +139,6 @@ void Search(
 	bool turned,
 	int distEstimate
 ) {
-	// Cycle versions:
-	/*
-	if (abs(fromX - MAXDIM / 2) + abs(fromY - MAXDIM / 2) > 2 * (Pattern.length() - index) + 2)
-		return;
-	*/
-	/*
-	if (distEstimate > Pattern.length() - index + 1) {
-		// Maybe we can't get back to the start. Find out.
-		distEstimate = DistanceToStart(fromX, fromY);
-		if (distEstimate > Pattern.length() - index + 1)
-		return;
-	}
-	*/
-
 	//	if (0)
 	if (index == 32)
 	//	if (!(++NumSteps % 100000))
@@ -170,41 +153,17 @@ void Search(
 
 	if (index == Pattern.length()) {
 		// check score
-
-		//	int score = 0;
-		//
-		//	for (int x = 0; x < MAXDIM; ++x)
-		//		for (int y = 0; y < MAXDIM; ++y)
-		//			if (TheBoard[y][x] == 'H')
-		//				score += (TheBoard[y + 2][x] == 'H') + (TheBoard[y][x + 2] == 'H');
-
-		if (score > MaxScore)
-		{
+		if (score > MaxScore) {
 			Solutions.clear();
 			MaxScore = score;
 		}
 
 		// Found a good solution
-
-		if (score == MaxScore)
-		{
+		if (score == MaxScore) {
 			Solutions.insert(TheBoard);
 			cout << "Score = " << score << "\n";
 			PrintBoard();
 		}
-
-		//		++NumSols;
-
-		/*	Board transpose;
-
-		for (int i = 0; i < MAXDIM; ++i)
-		transpose.push_back(string(MAXDIM, ' '));
-
-		for (int x = 0; x < MAXDIM; ++x)
-		for (int y = 0; y < MAXDIM; ++y)
-		transpose[x][y] = TheBoard[y][x];
-
-		Solutions.insert(transpose);	*/
 
 		return;
 	}
@@ -222,7 +181,6 @@ void Search(
 			int newscore = score + hneighbors * (Pattern[index] == 'H');
 
 			// Did we just isolate an empty space?
-
 			for (int d2 = 0; d2 < 4; ++d2) {
 				int x = fromX + 2 * DX[d2];
 				int y = fromY + 2 * DY[d2];
@@ -286,74 +244,4 @@ void PrintBoard() {
 	cout << TheBoard[y] << "\n";
 
 	cout << string(MAXDIM, '-') << "\n";
-}
-
-
-// A* search
-int DistanceToStart(int x, int y) {
-	OpenSet.push(Spot(x, y));
-	Open[y][x] = true;
-
-	GScore[y][x] = 0;
-	FScore[y][x] = Heuristic(x, y);
-
-	while (!OpenSet.empty()) {
-		Spot current = OpenSet.top();
-
-		if (current.x == MAXDIM / 2 && current.y == MAXDIM / 2) {
-			// done -- clean up
-
-			while (!OpenSet.empty()) {
-				Open[OpenSet.top().y][OpenSet.top().x] = false;
-				OpenSet.pop();
-			}
-
-			while (ClosedList.size()) {
-				Closed[ClosedList.back().y][ClosedList.back().x] = false;
-				ClosedList.pop_back();
-			}
-
-			//		cout << "distance from " << x - MAXDIM / 2 << ", " << y - MAXDIM / 2 << " = " << FScore[current.y][current.x] << "\n";
-
-			return FScore[current.y][current.x];
-		}
-
-		OpenSet.pop();
-		Open[current.y][current.x] = false;
-
-		ClosedList.push_back(current);
-		Closed[current.y][current.x] = true;
-
-		for (int dir = 0; dir < 4; ++dir) {
-			int newx = current.x + 2 * DX[dir];
-			int newy = current.y + 2 * DY[dir];
-
-			if (
-				(TheBoard[newy][newx] == ' ' || (newx == MAXDIM / 2 && newy == MAXDIM / 2)) &&
-				!Closed[newy][newx] &&
-				!(Open[newy][newx] &&
-				GScore[current.y][current.x] + 1 >= GScore[newy][newx])
-			) {
-				// This path is the best so far. Record it!
-
-				// This node might already exist in the priority queue. We can't update its priority; we just push a new copy.
-				// I think this should not cause any problems...
-
-				GScore[newy][newx] = GScore[current.y][current.x] + 1;
-				FScore[newy][newx] = GScore[newy][newx] + Heuristic(newx, newy);
-
-				OpenSet.push(Spot(newx, newy));
-				Open[newy][newx] = true;
-			}
-		}
-	}
-
-	// no path
-
-	return numeric_limits<int>::max();
-}
-
-float Heuristic(int x, int y) {
-	float d = (abs(x - MAXDIM / 2) + abs(y - MAXDIM / 2)) / 2;
-	return d + (1 - 1 / (d + 1));
 }
