@@ -121,6 +121,8 @@ int main(int argc, const char *argv[]) {
 }
 
 
+// These provide the offsets (in x and y coordinates) for the four cardinal directions.
+// Assuming the directions are indexed as N, E, S, W, this means positive y is down the screen.
 int DX[] = { 0, 1, 0, -1 };
 int DY[] = { -1, 0, 1, 0 };
 
@@ -169,45 +171,45 @@ void Search(
 	}
 
 	for (int dir = 0; dir < 4; ++dir) {
-		int newx = fromX + 2 * DX[dir];
-		int newy = fromY + 2 * DY[dir];
+		int const newx = fromX + 2 * DX[dir];
+		int const newy = fromY + 2 * DY[dir];
 
-		if (TheBoard[newy][newx] == ' ' && (turned || dir != 3)) {
-			int hneighbors, emptyneighbors;
+		if (!(TheBoard[newy][newx] == ' ') || !(turned || dir != 3)) {
+			continue;
+		}
 
-			CountNeighbors(newx, newy, hneighbors, emptyneighbors);
+		int hneighbors, emptyneighbors;
 
-			int newp = potential + emptyneighbors * (Pattern[index] == 'H') - hneighbors;
-			int newscore = score + hneighbors * (Pattern[index] == 'H');
+		CountNeighbors(newx, newy, hneighbors, emptyneighbors);
 
-			// Did we just isolate an empty space?
-			for (int d2 = 0; d2 < 4; ++d2) {
-				int x = fromX + 2 * DX[d2];
-				int y = fromY + 2 * DY[d2];
+		int newp = potential + emptyneighbors * (Pattern[index] == 'H') - hneighbors;
+		int newscore = score + hneighbors * (Pattern[index] == 'H');
 
-				if (dir != d2 && TheBoard[y][x] == ' ') {
-					int e, h;
+		// Did we just isolate an empty space?
+		for (int d2 = 0; d2 < 4; ++d2) {
+			int const x = fromX + 2 * DX[d2];
+			int const y = fromY + 2 * DY[d2];
 
-					CountNeighbors(x, y, h, e);
-
-					if (!e)
-					newp -= h;					// If so, subtract inaccessible potential
-				}
+			if (dir != d2 && TheBoard[y][x] == ' ') {
+				int e, h;
+				CountNeighbors(x, y, h, e);
+				if (!e)
+				newp -= h;					// If so, subtract inaccessible potential
 			}
+		}
 
-			int degree = 0;
+		int degree = 0;
 
-			for (int i = index + 1; i < Pattern.size(); ++i)
-			if (Pattern[i] == 'H')
-			degree += 2 + (Pattern[i - 1] == 'H') + (Pattern[(i + 1) % Pattern.size()] == 'H');
+		for (int i = index + 1; i < Pattern.size(); ++i)
+		if (Pattern[i] == 'H')
+		degree += 2 + (Pattern[i - 1] == 'H') + (Pattern[(i + 1) % Pattern.size()] == 'H');
 
-			if (newscore + (degree < newp ? degree : ((degree - newp) / 2 + newp)) >= MaxScore) {
-				TheBoard[newy][newx] = Pattern[index];
-				TheBoard[fromY + DY[dir]][fromX + DX[dir]] = (dir % 2 ? '-' : '|');
-				Search(index + 1, newy, newx, newscore, newp, turned || dir != 2, distEstimate + 2);	// typically add 2 to path?
-				TheBoard[fromY + DY[dir]][fromX + DX[dir]] = ' ';
-				TheBoard[newy][newx] = ' ';
-			}
+		if (newscore + (degree < newp ? degree : ((degree - newp) / 2 + newp)) >= MaxScore) {
+			TheBoard[newy][newx] = Pattern[index];
+			TheBoard[fromY + DY[dir]][fromX + DX[dir]] = (dir % 2 ? '-' : '|');
+			Search(index + 1, newy, newx, newscore, newp, turned || dir != 2, distEstimate + 2);	// typically add 2 to path?
+			TheBoard[fromY + DY[dir]][fromX + DX[dir]] = ' ';
+			TheBoard[newy][newx] = ' ';
 		}
 	}
 }
