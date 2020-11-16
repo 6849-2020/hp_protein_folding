@@ -115,18 +115,19 @@ void Search(
 		PrintBoard();
 	}
 
+	// Check if we've placed all nodes.
 	if (index == Pattern.length()) {
-		// check score
+		// Update MaxScore if this is a new record.
 		if (score > MaxScore) {
 			Solutions.clear();
 			MaxScore = score;
 		}
 
-		// Found a good solution
+		// Save the solution if it achieves the maximum score.
 		if (score == MaxScore) {
 			Solutions.insert(TheBoard);
 			cout << "Score = " << score << "\n";
-			PrintBoard();
+			//PrintBoard();
 		}
 
 		return;
