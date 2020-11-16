@@ -12,6 +12,7 @@
 #include <cassert>
 #include <limits>
 #include <stdlib.h>
+#include <chrono>
 
 using namespace std;
 
@@ -68,6 +69,7 @@ int main(int argc, const char *argv[]) {
 	}
 
 	// We start with the first two amino acids placed.
+	auto start = std::chrono::high_resolution_clock::now();
 	TheBoard[MAXDIM / 2][MAXDIM / 2] = Pattern[0];
 	TheBoard[MAXDIM / 2 + 1][MAXDIM / 2] = '|';
 	TheBoard[MAXDIM / 2 + 2][MAXDIM / 2] = Pattern[1];
@@ -82,6 +84,8 @@ int main(int argc, const char *argv[]) {
 		false,
 		3
 	);
+	auto stop = std::chrono::high_resolution_clock::now();
+	float elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
 
 	cout << "Found " << Solutions.size() << " optimal solutions (score " << MaxScore << "):\n" << endl;
 	for (set<Board>::iterator it = Solutions.begin(); it != Solutions.end(); ++it) {
@@ -89,6 +93,7 @@ int main(int argc, const char *argv[]) {
 		PrintBoard();
 	}
 	cout << "Found " << Solutions.size() << " optimal solutions (score " << MaxScore << ").\n" << endl;
+	cout << "Runtime: " << elapsed << " milliseconds\n";
 }
 
 
