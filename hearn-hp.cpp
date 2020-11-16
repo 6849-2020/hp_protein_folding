@@ -40,13 +40,14 @@ string Pattern =   "PPHPHHPHPPHPHPHPPHPHHPHPPHPHPH";		// score = 15
 //string Pattern = "PPHPHPHPHPHPPPHPHPHPHPPHPHPHPHPHPPPHPHPHPH";
 //string Pattern = "PHPPHPHPPHPPHPHPHPPHPPHPPHPHPHPPHPPHPPHPHPPHPHPHPPHP";
 
+// Note: If you remove turned, you'll end up with mirrored images of all your patterns.
 void Search(
 	int index,        // basically how many amino acids have been placed
 	int fromY,        // x coordinate of last placed amino acid
 	int fromX,        // y coordinate of last placed amino acid
 	int score,        // score of placed amino acids
 	int potential,    // number of empty squares that neighbor H amino acids
-	bool turned       // ?
+	bool turned       // this is used to break symmetry
 );
 
 // Counts the number of Hs and empty squares appearing in the four squares that neighbor (x, y).
