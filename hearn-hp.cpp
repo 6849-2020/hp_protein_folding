@@ -50,13 +50,14 @@ void Search(
 	bool turned,
 	int distEstimate
 );
-void CountNeighbors(int x, int y, int &numH, int &numEmpty);
-void PrintBoard();
 
+// Counts the number of Hs and empty squares appearing in the four squares that neighbor (x, y).
+void CountNeighbors(int x, int y, int &numH, int &numEmpty);
+
+void PrintBoard();
 
 // score = # of HH pairs
 // potential = # of H-empty pairs
-
 float FScore[MAXDIM][MAXDIM], GScore[MAXDIM][MAXDIM];
 
 struct Spot {
@@ -216,17 +217,19 @@ void Search(
 
 
 void CountNeighbors(int x, int y, int &numH, int &numEmpty) {
-	numH = numEmpty = 0;
+	numH = 0;
+	numEmpty = 0;
 
 	for (int dir = 0; dir < 4; ++dir) {
-		int newx = x + 2 * DX[dir];
-		int newy = y + 2 * DY[dir];
+		int const newx = x + 2 * DX[dir];
+		int const newy = y + 2 * DY[dir];
 
-		if (TheBoard[newy][newx] == 'H')
-		++numH;
-
-		if (TheBoard[newy][newx] == ' ')
-		++numEmpty;
+		if (TheBoard[newy][newx] == 'H') {
+			++numH;
+		}
+		if (TheBoard[newy][newx] == ' ') {
+			++numEmpty;
+		}
 	}
 }
 
@@ -234,16 +237,19 @@ void CountNeighbors(int x, int y, int &numH, int &numEmpty) {
 void PrintBoard() {
 	int miny = 0;
 
-	while (TheBoard[miny] == string(MAXDIM, ' '))
-	++miny;
+	while (TheBoard[miny] == string(MAXDIM, ' ')) {
+		++miny;
+	}
 
 	int maxy = MAXDIM - 1;
 
-	while (TheBoard[maxy] == string(MAXDIM, ' '))
-	--maxy;
+	while (TheBoard[maxy] == string(MAXDIM, ' ')) {
+		--maxy;
+	}
 
-	for (int y = miny; y <= maxy; ++y)
-	cout << TheBoard[y] << "\n";
+	for (int y = miny; y <= maxy; ++y) {
+		cout << TheBoard[y] << "\n";
+	}
 
 	cout << string(MAXDIM, '-') << "\n";
 }
