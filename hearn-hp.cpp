@@ -6,9 +6,9 @@
 //  Copyright © 2016 Bob Hearn. All rights reserved.
 //
 
+#include <array>
 #include <iostream>
 #include <vector>
-#include <set>
 #include <cassert>
 #include <limits>
 #include <stdlib.h>
@@ -16,11 +16,13 @@
 
 using namespace std;
 
-// This is used to display patterns.
-typedef vector<string> Board;
+constexpr int MAXDIM = 100;
+
+// This is used to display folded states.
+using Board = std::array<std::array<char, MAXDIM>, MAXDIM>;
 Board TheBoard;
 
-set<Board> Solutions;
+vector<Board> Solutions;
 int MaxScore = 0;
 
 
@@ -37,9 +39,6 @@ string Pattern =   "PPHPHHPHPPHPHPHPPHPHHPHPPHPHPH";		// score = 15
 //string Pattern = "PPHPHPHPHPHPPPHPHPHPHPPHPHPHPHPHPPPHPHPHPH";
 //string Pattern = "PHPPHPHPPHPPHPHPHPPHPPHPPHPHPHPPHPPHPPHPHPPHPHPHPPHP";
 
-//const int MAXDIM = 2 * (int) Pattern.size();
-const int MAXDIM = 100;
-
 void Search(
 	int index,        // basically how many amino acids have been placed
 	int fromY,        // x coordinate of last placed amino acid
@@ -53,7 +52,8 @@ void Search(
 // Counts the number of Hs and empty squares appearing in the four squares that neighbor (x, y).
 void CountNeighbors(int x, int y, int &numH, int &numEmpty);
 
-void PrintBoard();
+void PrintBoard(Board const& board);
+void PrintBoard() { PrintBoard(TheBoard); }
 
 int main(int argc, const char *argv[]) {
 	if (argc > 1) {
@@ -65,7 +65,9 @@ int main(int argc, const char *argv[]) {
 	cout << "Folding " << Pattern << " for scores >= " << MaxScore << endl;
 
 	for (int i = 0; i < MAXDIM; ++i) {
-		TheBoard.push_back(string(MAXDIM, ' '));
+		for (int j = 0; j < MAXDIM; ++j) {
+			TheBoard[j][i] = ' ';
+		}
 	}
 
 	// We start with the first two amino acids placed.
@@ -88,9 +90,8 @@ int main(int argc, const char *argv[]) {
 	float elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
 
 	cout << "Found " << Solutions.size() << " optimal solutions (score " << MaxScore << "):\n" << endl;
-	for (set<Board>::iterator it = Solutions.begin(); it != Solutions.end(); ++it) {
-		TheBoard = *it;
-		PrintBoard();
+	for (auto it = Solutions.begin(); it != Solutions.end(); ++it) {
+		PrintBoard(*it);
 	}
 	cout << "Found " << Solutions.size() << " optimal solutions (score " << MaxScore << ").\n" << endl;
 	cout << "Runtime: " << elapsed << " milliseconds\n";
@@ -136,7 +137,7 @@ void Search(
 
 		// Save the solution if it achieves the maximum score.
 		if (score == MaxScore) {
-			Solutions.insert(TheBoard);
+			Solutions.push_back(TheBoard);
 			//cout << "Score = " << score << "\n";
 			//PrintBoard();
 		}
@@ -220,21 +221,31 @@ void CountNeighbors(int x, int y, int &numH, int &numEmpty) {
 }
 
 
-void PrintBoard() {
-	int miny = 0;
+void PrintBoard(Board const& board) {
+	auto const row_is_empty = [&](int row) {
+		for (int i = 0; i < MAXDIM; ++i) {
+			if (board[row][i] != ' ') {
+				return false;
+			}
+		}
+		return true;
+	};
 
-	while (TheBoard[miny] == string(MAXDIM, ' ')) {
+	int miny = 0;
+	while (row_is_empty(miny)) {
 		++miny;
 	}
 
 	int maxy = MAXDIM - 1;
-
-	while (TheBoard[maxy] == string(MAXDIM, ' ')) {
+	while (row_is_empty(maxy)) {
 		--maxy;
 	}
 
 	for (int y = miny; y <= maxy; ++y) {
-		cout << TheBoard[y] << "\n";
+		for (int x = 0; x < MAXDIM; ++x) {
+			cout << board[y][x];
+		}
+		cout << '\n';
 	}
 
 	cout << string(MAXDIM, '-') << "\n";
