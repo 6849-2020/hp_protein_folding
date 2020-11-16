@@ -8,7 +8,6 @@
 
 #include <iostream>
 #include <vector>
-#include <queue>
 #include <set>
 #include <cassert>
 #include <limits>
@@ -21,7 +20,6 @@ typedef vector<string> Board;
 Board TheBoard;
 
 set<Board> Solutions;
-int NumSols;
 int MaxScore = 0;
 
 
@@ -42,45 +40,19 @@ string Pattern =   "PPHPHHPHPPHPHPHPPHPHHPHPPHPHPH";		// score = 15
 const int MAXDIM = 100;
 
 void Search(
-	int index,        // ?
+	int index,        // basically how many nodes have been placed
 	int fromY,        // positions the pattern
 	int fromX,        // positions the pattern
-	int score,
-	int potential,
-	bool turned,
-	int distEstimate
+	int score,        // score of existing nodes
+	int potential,    // ?
+	bool turned,      // ?
+	int distEstimate  // ?
 );
 
 // Counts the number of Hs and empty squares appearing in the four squares that neighbor (x, y).
 void CountNeighbors(int x, int y, int &numH, int &numEmpty);
 
 void PrintBoard();
-
-// score = # of HH pairs
-// potential = # of H-empty pairs
-float FScore[MAXDIM][MAXDIM], GScore[MAXDIM][MAXDIM];
-
-struct Spot {
-	int x, y;
-
-	Spot(int x, int y) : x(x), y(y)	{}
-	bool operator>(const Spot &s) const {
-		//		cout << "FScore[" << y << "][" << x << "] = " << FScore[y][x] << ", " << "FScore[" << s.y << "][" << s.x << "] = " << FScore[s.y][s.x]
-		//		  << ", operator> = " << (FScore[y][x] > FScore[s.y][s.x]) << "\n";
-		return FScore[y][x] > FScore[s.y][s.x];
-	}
-};
-
-
-// priority_queue returns largest element as top(). We want the smallest, so we use std::greater<Spot> for the Compare function
-// (default = std::less<Spot>).
-
-priority_queue<Spot, vector<Spot>, greater<Spot> > OpenSet;
-bool Open[MAXDIM][MAXDIM];
-
-vector<Spot> ClosedList;
-bool Closed[MAXDIM][MAXDIM];
-
 
 int main(int argc, const char *argv[]) {
 	if (argc > 1) {
@@ -108,11 +80,6 @@ int main(int argc, const char *argv[]) {
 		3
 	);
 
-	//	TheBoard[MAXDIM / 2 + 3][MAXDIM / 2] = '|';
-	//	TheBoard[MAXDIM / 2 + 4][MAXDIM / 2] = Pattern[2];
-
-	//	Search(3, MAXDIM / 2 + 4, MAXDIM / 2, 0, 2, true, 4);
-
 	cout << "Found " << Solutions.size() << " optimal solutions (score " << MaxScore << "):\n" << endl;
 	for (set<Board>::iterator it = Solutions.begin(); it != Solutions.end(); ++it) {
 		TheBoard = *it;
@@ -127,8 +94,6 @@ int main(int argc, const char *argv[]) {
 int DX[] = { 0, 1, 0, -1 };
 int DY[] = { -1, 0, 1, 0 };
 
-int NumSteps;
-
 
 // distEstimate is a guess (generally high) for path length from fromX, fromY back to start via empty squares
 // We use it as a heuristic for pruning. We will only prune if the estimate is too far, and the actual distance
@@ -142,11 +107,7 @@ void Search(
 	bool turned,
 	int distEstimate
 ) {
-	//	if (0)
-	if (index == 32)
-	//	if (!(++NumSteps % 100000))
-	//	if (!(++NumSteps % 10000000))
-	{
+	if (index == 32) {
 		cout << "Interim...\n";
 		cout << "Score = " << score << "\n";
 		cout << "Potential = " << potential << "\n";
