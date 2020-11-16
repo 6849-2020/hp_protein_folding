@@ -16,8 +16,8 @@
 
 using namespace std;
 
+// This is used to display patterns.
 typedef vector<string> Board;
-
 Board TheBoard;
 
 set<Board> Solutions;
@@ -31,21 +31,25 @@ int MaxScore = 0;
 //string Pattern = "PHPPHPHPPHPPHPHPHPPHPPHPPHPHPPHPPHPHPHPPHP";
 //string Pattern = "PHPPHPHPPHHPHPPHPHPPHH";
 //string Pattern = "PPPP";
-
 string Pattern =   "PPHPHHPHPPHPHPHPPHPHHPHPPHPHPH";		// score = 15
 //string Pattern =   "PPHHPHPHPPHPHPPHHPHPHPPHPH";				// score = 13
-
 //string Pattern = "HPPHPHPHHPHPHPPHPHPHPHPPHPHPHHPHPHPPHPHPHP";
 //string Pattern = "HPPHPHHPPHPHPHPPHHPHPPHPHPHPPHHPHHPPHPHP";
-
 //string Pattern = "PPHPHPHPHPHPPPHPHPHPHPPHPHPHPHPHPPPHPHPHPH";
-
 //string Pattern = "PHPPHPHPPHPPHPHPHPPHPPHPPHPHPHPPHPPHPPHPHPPHPHPHPPHP";
 
 //const int MAXDIM = 2 * (int) Pattern.size();
 const int MAXDIM = 100;
 
-void Search(int index, int fromY, int fromX, int score, int potential, bool turned, int distEstimate);
+void Search(
+	int index,        // ?
+	int fromY,        // positions the pattern
+	int fromX,        // positions the pattern
+	int score,
+	int potential,
+	bool turned,
+	int distEstimate
+);
 void CountNeighbors(int x, int y, int &numH, int &numEmpty);
 void PrintBoard();
 
@@ -58,13 +62,11 @@ float Heuristic(int x, int y);
 
 float FScore[MAXDIM][MAXDIM], GScore[MAXDIM][MAXDIM];
 
-struct Spot
-{
+struct Spot {
 	int x, y;
 
-	Spot(int x, int y) : x(x), y(y)	{	}
-	bool operator>(const Spot &s) const
-	{
+	Spot(int x, int y) : x(x), y(y)	{}
+	bool operator>(const Spot &s) const {
 		//		cout << "FScore[" << y << "][" << x << "] = " << FScore[y][x] << ", " << "FScore[" << s.y << "][" << s.x << "] = " << FScore[s.y][s.x]
 		//		  << ", operator> = " << (FScore[y][x] > FScore[s.y][s.x]) << "\n";
 		return FScore[y][x] > FScore[s.y][s.x];
@@ -83,19 +85,30 @@ bool Closed[MAXDIM][MAXDIM];
 
 
 int main(int argc, const char *argv[]) {
-	if (argc > 1)
-	Pattern = argv[1];
-	if (argc > 2)
-	MaxScore = atoi(argv[2]);
+	if (argc > 1) {
+		Pattern = argv[1];
+	}
+	if (argc > 2) {
+		MaxScore = atoi(argv[2]);
+	}
 	cout << "Folding " << Pattern << " for scores >= " << MaxScore << endl;
 
-	for (int i = 0; i < MAXDIM; ++i)
-	TheBoard.push_back(string(MAXDIM, ' '));
+	for (int i = 0; i < MAXDIM; ++i) {
+		TheBoard.push_back(string(MAXDIM, ' '));
+	}
 
 	TheBoard[MAXDIM / 2][MAXDIM / 2] = Pattern[0];
 	TheBoard[MAXDIM / 2 + 1][MAXDIM / 2] = '|';
 	TheBoard[MAXDIM / 2 + 2][MAXDIM / 2] = Pattern[1];
-	Search(2, MAXDIM / 2 + 2, MAXDIM / 2, Pattern[0] == 'H' && Pattern[1] == 'H', 3 * (Pattern[0] == 'H') + 3 * (Pattern[1] == 'H'), false, 3);
+	Search(
+		2,
+		MAXDIM / 2 + 2,
+		MAXDIM / 2,
+		Pattern[0] == 'H' && Pattern[1] == 'H',
+		3 * (Pattern[0] == 'H') + 3 * (Pattern[1] == 'H'),
+		false,
+		3
+	);
 
 	//	TheBoard[MAXDIM / 2 + 3][MAXDIM / 2] = '|';
 	//	TheBoard[MAXDIM / 2 + 4][MAXDIM / 2] = Pattern[2];
@@ -120,7 +133,6 @@ int NumSteps;
 // distEstimate is a guess (generally high) for path length from fromX, fromY back to start via empty squares
 // We use it as a heuristic for pruning. We will only prune if the estimate is too far, and the actual distance
 // (computed in that case) turns out to be too far.
-
 void Search(
 	int index,
 	int fromY,
