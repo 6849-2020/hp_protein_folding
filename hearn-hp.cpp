@@ -5,6 +5,12 @@
 //  Created by Bob Hearn on 3/19/16.
 //  Copyright © 2016 Bob Hearn. All rights reserved.
 //
+// Edited by Erik Strand on 11/16/2020.
+// - cleared out commented and incomplete code (mostly related to closed chains)
+// - added explanatory comments
+// - changed the board representation from strings to std::arrays of chars (first step toward a
+//   representation optimized for the algorithm rather than printing)
+//
 
 #include <array>
 #include <iostream>
@@ -18,14 +24,19 @@ using namespace std;
 
 constexpr int MAXDIM = 100;
 
-// This strucutre is used to represent folded states. It's in a format that's easy to print, but not
-// super space (or cache) efficient. We always index by y and then x coordinate.
+// This strucutre is used to represent partial and complete folded states. It's in a format that's
+// easy to print, but not super space (or cache) efficient. Indexing is matrix style. So the first
+// coordinate determines vertical position, and increasing it moves you from the top to the bottom.
+// The second coordinate determines horizontal position, and increasing it moves you from the left
+// to the right.
 using Board = std::array<std::array<char, MAXDIM>, MAXDIM>;
 Board TheBoard;
 
-vector<Board> Solutions;
+// This records the highest score we've seen so far.
 int MaxScore = 0;
 
+// This records all solutions we've found with the maximum score.
+vector<Board> Solutions;
 
 //string Pattern = "PHPPHPPHPPHP";
 //string Pattern = "PHPPHPHPPHPPHPPHPHPPHP";
@@ -53,6 +64,8 @@ void Search(
 // Counts the number of Hs and empty squares appearing in the four squares that neighbor (x, y).
 void CountNeighbors(int x, int y, int &numH, int &numEmpty);
 
+// Prints an ASCII representation of the board. (Not much transformation needed, since the board
+// stores ASCII characters.)
 void PrintBoard(Board const& board);
 void PrintBoard() { PrintBoard(TheBoard); }
 
@@ -65,24 +78,30 @@ int main(int argc, const char *argv[]) {
 	}
 	cout << "Folding " << Pattern << " for scores >= " << MaxScore << endl;
 
+	// Initialize the board. Every square starts blank.
 	for (int i = 0; i < MAXDIM; ++i) {
 		for (int j = 0; j < MAXDIM; ++j) {
 			TheBoard[j][i] = ' ';
 		}
 	}
 
-	// We start with the first two amino acids placed.
-	auto start = std::chrono::high_resolution_clock::now();
+	// Place the first two amino acids. We always position the second right below the first. Note
+	// that this breaks rotational symmetry, so we won't get rotated versions of the same solution.
 	TheBoard[MAXDIM / 2][MAXDIM / 2] = Pattern[0];
 	TheBoard[MAXDIM / 2 + 1][MAXDIM / 2] = '|';
 	TheBoard[MAXDIM / 2 + 2][MAXDIM / 2] = Pattern[1];
+
+	// Start the search.
+	auto start = std::chrono::high_resolution_clock::now();
 	Search(
+		// We've placed two amino acids so far.
 		2,
+		// This is the coordinate of the second amino acid in the chain.
 		MAXDIM / 2 + 2,
 		MAXDIM / 2,
-		// H-H has score 1, all other two amino acid chains have score 0
+		// H-H has score 1, all other two amino acid chains have score 0.
 		(Pattern[0] == 'H' && Pattern[1] == 'H') ? 1 : 0,
-		// each amino acid could potentially have three additional H neighbors
+		// Each amino acid could potentially have three additional H neighbors.
 		3 * (Pattern[0] == 'H') + 3 * (Pattern[1] == 'H'),
 		false
 	);
