@@ -40,11 +40,11 @@ string Pattern =   "PPHPHHPHPPHPHPHPPHPHHPHPPHPHPH";		// score = 15
 const int MAXDIM = 100;
 
 void Search(
-	int index,        // basically how many nodes have been placed
-	int fromY,        // positions the pattern
-	int fromX,        // positions the pattern
-	int score,        // score of existing nodes
-	int potential,    // ?
+	int index,        // basically how many amino acids have been placed
+	int fromY,        // x coordinate of last placed amino acid
+	int fromX,        // y coordinate of last placed amino acid
+	int score,        // score of placed amino acids
+	int potential,    // number of empty squares that neighbor H amino acids
 	bool turned,      // ?
 	int distEstimate  // ?
 );
@@ -67,6 +67,7 @@ int main(int argc, const char *argv[]) {
 		TheBoard.push_back(string(MAXDIM, ' '));
 	}
 
+	// We start with the first two amino acids placed.
 	TheBoard[MAXDIM / 2][MAXDIM / 2] = Pattern[0];
 	TheBoard[MAXDIM / 2 + 1][MAXDIM / 2] = '|';
 	TheBoard[MAXDIM / 2 + 2][MAXDIM / 2] = Pattern[1];
@@ -74,7 +75,9 @@ int main(int argc, const char *argv[]) {
 		2,
 		MAXDIM / 2 + 2,
 		MAXDIM / 2,
-		Pattern[0] == 'H' && Pattern[1] == 'H',
+		// H-H has score 1, all other two amino acid chains have score 0
+		(Pattern[0] == 'H' && Pattern[1] == 'H') ? 1 : 0,
+		// each amino acid could potentially have three additional H neighbors
 		3 * (Pattern[0] == 'H') + 3 * (Pattern[1] == 'H'),
 		false,
 		3
@@ -107,15 +110,18 @@ void Search(
 	bool turned,
 	int distEstimate
 ) {
-	if (index == 32) {
+	/*
+	// Uncomment this to print intermediate chains.
+	if (index == 8) {
 		cout << "Interim...\n";
 		cout << "Score = " << score << "\n";
 		cout << "Potential = " << potential << "\n";
 		//		cout << "Score upper bound = " << score + (degree < potential ? degree : ((degree - potential) / 2 + potential)) << "\n";
 		PrintBoard();
 	}
+	*/
 
-	// Check if we've placed all nodes.
+	// Check if we've placed all amino acids.
 	if (index == Pattern.length()) {
 		// Update MaxScore if this is a new record.
 		if (score > MaxScore) {
@@ -126,7 +132,7 @@ void Search(
 		// Save the solution if it achieves the maximum score.
 		if (score == MaxScore) {
 			Solutions.insert(TheBoard);
-			cout << "Score = " << score << "\n";
+			//cout << "Score = " << score << "\n";
 			//PrintBoard();
 		}
 
@@ -142,32 +148,45 @@ void Search(
 		}
 
 		int hneighbors, emptyneighbors;
-
 		CountNeighbors(newx, newy, hneighbors, emptyneighbors);
 
+		// The new potential is the old one with two changes.
+		// We subtract the number of H neighbors, since are placing an amino acid in that spot.
+		// If this node is an H node, we add the number of empty neighbors.
 		int newp = potential + emptyneighbors * (Pattern[index] == 'H') - hneighbors;
+		// The new score is the old one plus the number of H neighbors (if are placing an H now).
 		int newscore = score + hneighbors * (Pattern[index] == 'H');
 
-		// Did we just isolate an empty space?
+		// Check if we just isolated an empty space.
+		// Q: What about larger regions of empty space?
 		for (int d2 = 0; d2 < 4; ++d2) {
+			if (d2 == dir) {
+				continue;
+			}
+
 			int const x = fromX + 2 * DX[d2];
 			int const y = fromY + 2 * DY[d2];
 
-			if (dir != d2 && TheBoard[y][x] == ' ') {
-				int e, h;
+			if (TheBoard[y][x] == ' ') {
+				int h, e;
 				CountNeighbors(x, y, h, e);
-				if (!e)
-				newp -= h;					// If so, subtract inaccessible potential
+				// If so, subtract inaccessible potential.
+				if (e == 0) {
+					newp -= h;
+				}
 			}
 		}
 
 		int degree = 0;
+		for (int i = index + 1; i < Pattern.size(); ++i) {
+			if (Pattern[i] == 'H') {
+				// Q: Why do we allow ourselves to wrap around here?
+				degree += 2 + (Pattern[i - 1] == 'H') + (Pattern[(i + 1) % Pattern.size()] == 'H');
+			}
+		}
 
-		for (int i = index + 1; i < Pattern.size(); ++i)
-		if (Pattern[i] == 'H')
-		degree += 2 + (Pattern[i - 1] == 'H') + (Pattern[(i + 1) % Pattern.size()] == 'H');
-
-		if (newscore + (degree < newp ? degree : ((degree - newp) / 2 + newp)) >= MaxScore) {
+		int const delta = (degree < newp) ? degree : ((degree - newp) / 2 + newp);
+		if (newscore + delta >= MaxScore) {
 			TheBoard[newy][newx] = Pattern[index];
 			TheBoard[fromY + DY[dir]][fromX + DX[dir]] = (dir % 2 ? '-' : '|');
 			Search(index + 1, newy, newx, newscore, newp, turned || dir != 2, distEstimate + 2);	// typically add 2 to path?
