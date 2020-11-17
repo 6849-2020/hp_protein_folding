@@ -74,6 +74,9 @@ struct SquareBoard {
 	// 0 is North, 1 is East, 2 is South, and 3 is West.
 	static constexpr int DX[NDirs] = {0, 2, 0, -2};
 	static constexpr int DY[NDirs] = {-2, 0, 2, 0};
+
+	// Returns true if going from direction 0 to this direction requires a right turn.
+	static bool is_right_turn(int dir) { return dir == 1; }
 };
 
 // Pre C++17, the compiler gets salty if we don't give explicit definitions somewhere.
@@ -137,12 +140,16 @@ int main(int argc, const char *argv[]) {
 		}
 	}
 
-	// Place the first two amino acids. We always position the second right below the first. Note
-	// that this breaks rotational symmetry, so we won't get rotated versions of the same solution.
-	// (Mirror symemtry is broken below, search for "turned".)
-	TheBoard(MAXDIM / 2, MAXDIM / 2) = Pattern[0];
-	TheBoard(MAXDIM / 2 + 1, MAXDIM / 2) = '|';
-	TheBoard(MAXDIM / 2 + 2, MAXDIM / 2) = Pattern[1];
+	// Place the first two amino acids. Note that this breaks rotational symmetry, so we won't get
+	// rotated versions of the same solution. (Mirror symmetry is broken below.)
+	int const y0 = MAXDIM / 2;
+	int const x0 = MAXDIM / 2;
+	int const dir0 = 0;
+	int const y1 = y0 + Board::DY[dir0];
+	int const x1 = x0 + Board::DX[dir0];
+	TheBoard(y0, x0) = Pattern[0];
+	TheBoard(y1, x1) = Pattern[1];
+	TheBoard.draw_link(y0, x0, dir0);
 
 	// Start the search.
 	auto start = std::chrono::high_resolution_clock::now();
@@ -150,8 +157,8 @@ int main(int argc, const char *argv[]) {
 		// We've placed two amino acids so far.
 		2,
 		// These are the coordinates of the second amino acid in the chain.
-		MAXDIM / 2 + 2,
-		MAXDIM / 2,
+		y1,
+		x1,
 		// H-H has score 1, all other two amino acid chains have score 0.
 		(Pattern[0] == 'H' && Pattern[1] == 'H') ? 1 : 0,
 		// Each amino acid could potentially have three additional H neighbors.
@@ -217,10 +224,10 @@ void Search(
 		int const newy = fromY + Board::DY[dir];
 
 		// If the square is already occupied, we can't use it.
-		// If we haven't turned before (i.e. all amino acids have been placed in a straight line),
-		// then we require that this one be placed to the right. This prevents us from getting
+		// If we haven't turned before (i.e. all amino acids have been placed along direction 0),
+		// then we require that this one be placed to the left. This prevents us from getting
 		// mirror images of all our solutions.
-		if (TheBoard(newy, newx) != ' ' || (!turned && dir == 3)) {
+		if (TheBoard(newy, newx) != ' ' || (!turned && Board::is_right_turn(dir))) {
 			continue;
 		}
 
@@ -280,8 +287,8 @@ void Search(
 			TheBoard.draw_link(fromY, fromX, dir);
 
 			// Recurse.
-			// We break symmetry the first time we stop placing amino acids in a straight line.
-			Search(index + 1, newy, newx, newscore, newp, turned || dir != 2);
+			// We break mirror symmetry the first time we place an amino acid not along direction 0.
+			Search(index + 1, newy, newx, newscore, newp, turned || dir != 0);
 
 			// Remove this amino acid.
 			TheBoard.erase_link(fromY, fromX, dir);
