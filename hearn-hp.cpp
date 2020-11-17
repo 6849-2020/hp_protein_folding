@@ -54,14 +54,13 @@ string Pattern =   "PPHPHHPHPPHPHPHPPHPHHPHPPHPHPH";		// score = 15
 //string Pattern = "PPHPHPHPHPHPPPHPHPHPHPPHPHPHPHPHPPPHPHPHPH";
 //string Pattern = "PHPPHPHPPHPPHPHPHPPHPPHPPHPHPHPPHPPHPPHPHPPHPHPHPPHP";
 
-// Note: If you remove turned, you'll end up with mirrored images of all your patterns.
 void Search(
-	int index,        // basically how many amino acids have been placed
+	int index,        // index of the next amino acid to be placed
 	int fromY,        // x coordinate of last placed amino acid
 	int fromX,        // y coordinate of last placed amino acid
-	int score,        // score of placed amino acids
-	int potential,    // number of empty squares that neighbor H amino acids
-	bool turned       // this is used to break symmetry
+	int score,        // score of placed amino acids so far
+	int potential,    // roughly the number of empty squares that neighbor H amino acids
+	bool turned       // indicates if the current pattern has broken mirror symmetry yet
 );
 
 // Counts the number of Hs and empty squares appearing in the four squares that neighbor (x, y).
@@ -94,6 +93,7 @@ int main(int argc, const char *argv[]) {
 
 	// Place the first two amino acids. We always position the second right below the first. Note
 	// that this breaks rotational symmetry, so we won't get rotated versions of the same solution.
+	// (Mirror symemtry is broken below, search for "turned".)
 	TheBoard[MAXDIM / 2][MAXDIM / 2] = Pattern[0];
 	TheBoard[MAXDIM / 2 + 1][MAXDIM / 2] = '|';
 	TheBoard[MAXDIM / 2 + 2][MAXDIM / 2] = Pattern[1];
@@ -103,13 +103,14 @@ int main(int argc, const char *argv[]) {
 	Search(
 		// We've placed two amino acids so far.
 		2,
-		// This is the coordinate of the second amino acid in the chain.
+		// These are the coordinates of the second amino acid in the chain.
 		MAXDIM / 2 + 2,
 		MAXDIM / 2,
 		// H-H has score 1, all other two amino acid chains have score 0.
 		(Pattern[0] == 'H' && Pattern[1] == 'H') ? 1 : 0,
 		// Each amino acid could potentially have three additional H neighbors.
 		3 * (Pattern[0] == 'H') + 3 * (Pattern[1] == 'H'),
+		// So far all amino acids are in a straight line, so we haven't broken mirror symmetry.
 		false
 	);
 	auto stop = std::chrono::high_resolution_clock::now();
@@ -176,7 +177,10 @@ void Search(
 		int const newy = fromY + 2 * DY[dir];
 
 		// If the square is already occupied, we can't use it.
-		if (TheBoard[newy][newx] != ' ' || !(turned || dir != 3)) {
+		// If we haven't turned before (i.e. all amino acids have been placed in a straight line),
+		// then we require that this one be placed to the right. This prevents us from getting
+		// mirror images of all our solutions.
+		if (TheBoard[newy][newx] != ' ' || (!turned && dir == 3)) {
 			continue;
 		}
 
@@ -236,6 +240,7 @@ void Search(
 			TheBoard[fromY + DY[dir]][fromX + DX[dir]] = (dir % 2 ? '-' : '|');
 
 			// Recurse.
+			// We break symmetry the first time we stop placing amino acids in a straight line.
 			Search(index + 1, newy, newx, newscore, newp, turned || dir != 2);
 
 			// Remove this amino acid.
