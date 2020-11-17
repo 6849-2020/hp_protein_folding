@@ -158,20 +158,20 @@ constexpr int HexagonalBoard::DY[HexagonalBoard::NDirs];
 
 
 // Changing this line changes the grid. Square and hexagonal boards are supported.
-using Board = SquareBoard;
-//using Board = HexagonalBoard;
+//using Board = SquareBoard;
+using Board = HexagonalBoard;
 
 // This is the global board that we modify as we run the algorithm.
 Board TheBoard;
+
+// This stores the amino acid sequence (e.g. "HPPHPHPH").
+string Pattern;
 
 // This records the highest score we've seen so far.
 int MaxScore = 0;
 
 // This records copies of all solutions we've found with the maximum score.
 vector<Board> Solutions;
-
-// This is the default pattern. It wasn't chosen for any particular reason.
-string Pattern = "HHPPHPPPHHPPHPHPHPH";
 
 // When true, we print intermediate results. It can be changed here or on the command line.
 bool verbose = false;
@@ -190,6 +190,16 @@ void CountNeighbors(int x, int y, int &numH, int &numEmpty);
 
 
 int main(int argc, const char *argv[]) {
+	// These are the default patterns. They're different based on the board type so that they both
+	// take under 10 seconds to run, and don't produce thousands of results.
+	if (Board::NDirs == 6) {
+		// for a hexagonal grid
+		Pattern = "HHPPHPPPHHPPHPHPHPH";
+	} else {
+		// for a square grid
+		Pattern = "PPHPHHPHPPHPHPHPPHPHHPHPPHPHPH";
+	}
+
 	if (argc > 1) {
 		// The first argument can set the pattern (e.g. HPPHPHPPHP).
 		Pattern = argv[1];
