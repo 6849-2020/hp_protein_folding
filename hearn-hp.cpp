@@ -93,8 +93,24 @@ struct HexagonalBoard {
 	// structure is minimal and printing does whatever transformations are needed to generate the
 	// ASCII representation. It would make the algorithm run a good bit faster too. But this is a
 	// quick hack to get things going.
-	char operator()(int row, int col) const { return data[2 * row][2 * col]; }
-	char& operator()(int row, int col) { return data[2 * row][2 * col]; }
+	char operator()(int row, int col) const {
+		row *= 2;
+		col *= 2;
+		if (row < 0 || 2 * MAXDIM <= row || col < 0 || 2 * MAXDIM <= col) {
+			cout << "Error: TheBoard is too small. Increase MAXDIM.\n";
+			exit(1);
+		}
+		return data[row][col];
+	}
+	char& operator()(int row, int col) {
+		row *= 2;
+		col *= 2;
+		if (row < 0 || 2 * MAXDIM <= row || col < 0 || 2 * MAXDIM <= col) {
+			cout << "Error: board is too smal. Increase MAXDIM.\n";
+			exit(1);
+		}
+		return data[row][col];
+	}
 
 	// This fills a board with spaces.
 	// Note: memset would be faster (unless the compiler is already smart enough to call it for us).
@@ -142,18 +158,8 @@ int MaxScore = 0;
 // This records copies of all solutions we've found with the maximum score.
 vector<Board> Solutions;
 
-//string Pattern = "PHPPHPPHPPHP";
-//string Pattern = "PHPPHPHPPHPPHPPHPHPPHP";
-//string Pattern = "PHPPHPHPPHPPHPHPPHPPHPPHPHPHPPHP";
-//string Pattern = "PHPPHPHPPHPPHPHPHPPHPPHPPHPHPPHPPHPHPHPPHP";
-//string Pattern = "PHPPHPHPPHHPHPPHPHPPHH";
-//string Pattern = "PPPP";
-string Pattern =   "PPHPHHPHPPHPHPHPPHPHHPHPPHPHPH";		// score = 15
-//string Pattern =   "PPHHPHPHPPHPHPPHHPHPHPPHPH";				// score = 13
-//string Pattern = "HPPHPHPHHPHPHPPHPHPHPHPPHPHPHHPHPHPPHPHPHP";
-//string Pattern = "HPPHPHHPPHPHPHPPHHPHPPHPHPHPPHHPHHPPHPHP";
-//string Pattern = "PPHPHPHPHPHPPPHPHPHPHPPHPHPHPHPHPPPHPHPHPH";
-//string Pattern = "PHPPHPHPPHPPHPHPHPPHPPHPPHPHPHPPHPPHPPHPHPPHPHPHPPHP";
+// This is the default pattern. It wasn't chosen for any particular reason.
+string Pattern = "HHPPHPPPHHPPHPHPHPH";
 
 // When true, we print intermediate results. It can be changed here or on the command line.
 bool verbose = false;
