@@ -6,10 +6,12 @@
 //  Copyright © 2016 Bob Hearn. All rights reserved.
 //
 // Edited by Erik Strand on 11/16/2020.
+// - implemented hexagonal grids
 // - cleared out commented and incomplete code (mostly related to closed chains)
 // - added explanatory comments
-// - changed the board representation from strings to std::arrays of chars (first step toward a
-//   representation optimized for the algorithm rather than printing)
+// TODO:
+// - use more efficient data structures
+// - parallelize
 //
 
 #include <array>
