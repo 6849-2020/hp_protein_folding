@@ -24,9 +24,6 @@ using namespace std;
 
 constexpr int MAXDIM = 100;
 
-// When true, we print intermediate results. It can be changed here or on the command line.
-bool verbose = false;
-
 // This strucutre is used to represent partial and complete folded states. It's in a format that's
 // easy to print, but not super space (or cache) efficient. Indexing is matrix style. So the first
 // coordinate determines vertical position, and increasing it moves you from the top to the bottom.
@@ -132,15 +129,17 @@ constexpr int HexagonalBoard::DX[HexagonalBoard::NDirs];
 constexpr int HexagonalBoard::DY[HexagonalBoard::NDirs];
 
 
-// This will allow us to switch to a hexagonal board.
+// Changing this line changes the grid. Square and hexagonal boards are supported.
 //using Board = SquareBoard;
 using Board = HexagonalBoard;
+
+// This is the global board that we modify as we run the algorithm.
 Board TheBoard;
 
 // This records the highest score we've seen so far.
 int MaxScore = 0;
 
-// This records all solutions we've found with the maximum score.
+// This records copies of all solutions we've found with the maximum score.
 vector<Board> Solutions;
 
 //string Pattern = "PHPPHPPHPPHP";
@@ -155,6 +154,9 @@ string Pattern =   "PPHPHHPHPPHPHPHPPHPHHPHPPHPHPH";		// score = 15
 //string Pattern = "HPPHPHHPPHPHPHPPHHPHPPHPHPHPPHHPHHPPHPHP";
 //string Pattern = "PPHPHPHPHPHPPPHPHPHPHPPHPHPHPHPHPPPHPHPHPH";
 //string Pattern = "PHPPHPHPPHPPHPHPHPPHPPHPPHPHPHPPHPPHPPHPHPPHPHPHPPHP";
+
+// When true, we print intermediate results. It can be changed here or on the command line.
+bool verbose = false;
 
 void Search(
 	int index,        // index of the next amino acid to be placed
@@ -171,9 +173,13 @@ void CountNeighbors(int x, int y, int &numH, int &numEmpty);
 
 int main(int argc, const char *argv[]) {
 	if (argc > 1) {
+		// The first argument can set the pattern (e.g. HPPHPHPPHP).
 		Pattern = argv[1];
 	}
 	if (argc > 2) {
+		// The second argument can set the target score.
+		// It's 0 by default, but supplying a higher number can enable the algorithm to prune
+		// branches more greedily and thus run faster.
 		MaxScore = atoi(argv[2]);
 	}
 	if (argc > 3) {
