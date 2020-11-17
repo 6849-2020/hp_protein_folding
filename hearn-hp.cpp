@@ -161,8 +161,8 @@ int main(int argc, const char *argv[]) {
 		x1,
 		// H-H has score 1, all other two amino acid chains have score 0.
 		(Pattern[0] == 'H' && Pattern[1] == 'H') ? 1 : 0,
-		// Each amino acid could potentially have three additional H neighbors.
-		3 * (Pattern[0] == 'H') + 3 * (Pattern[1] == 'H'),
+		// Each amino acid could potentially have Board::NDirs - 1 additional H neighbors.
+		(Board::NDirs - 1) * ((Pattern[0] == 'H' ? 1 : 0) + (Pattern[1] == 'H' ? 1 : 0)),
 		// So far all amino acids are in a straight line, so we haven't broken mirror symmetry.
 		false
 	);
@@ -191,7 +191,6 @@ void Search(
 		cout << "Interim...\n";
 		cout << "Score = " << score << "\n";
 		cout << "Potential = " << potential << "\n";
-		//cout << "Score upper bound = " << score + (degree < potential ? degree : ((degree - potential) / 2 + potential)) << "\n";
 		TheBoard.print();
 	}
 
@@ -266,20 +265,25 @@ void Search(
 			}
 		}
 
-		// Compute the maximum possible number of points we could still add to our score.
-		// (Or at least something similar to this.)
-		// Q: Aren't we double counting H-H links within the sequence?
+		// Compute an upper bound of the points we could still add to our score.
+		// Note that we are double counting some things here.
 		int degree = 0;
 		for (int i = index + 1; i < Pattern.size(); ++i) {
 			if (Pattern[i] == 'H') {
-				degree += 2 + (Pattern[i - 1] == 'H') + (Pattern[(i + 1) % Pattern.size()] == 'H');
+				degree += (Board::NDirs - 2) + (Pattern[i - 1] == 'H') + (Pattern[(i + 1) % Pattern.size()] == 'H');
 			}
 		}
 
 		// Only place an amino acid here if it looks possible to match or beat MaxScore.
 		// Q: Are there false negatives? I.e. configurations that we throw away that would achieve
 		//    the max score?
-		// Q: How can we come up with a tighter bound?
+		// Q: What other bounds are worth trying?
+		// Q: What exactly is the logic of the (degree < newp) condition? Intuitively, it seems to
+		//    say that if we have a lot left to go, it's worth dividing out so that we're not double
+		//    counting things. But I haven't thought this through to confirm that it can't add false
+		//    negatives.
+		//    Related note: I think the factor of one half is accounting for double counting.
+		//    If it's not, perhaps it should be changed for hexagonal boards.
 		int const delta = (degree < newp) ? degree : ((degree - newp) / 2 + newp);
 		if (newscore + delta >= MaxScore) {
 			// Place the amino acid.
