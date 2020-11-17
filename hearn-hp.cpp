@@ -63,12 +63,15 @@ struct SquareBoard {
 		data[link_y][link_x] = ' ';
 	}
 
+	// Prints the board to cout as ASCII art.
+	void print();
+
 	std::array<std::array<char, MAXDIM>, MAXDIM> data;
 
 	static constexpr int NDirs = 4;
 
 	// These provide the offsets (in x and y coordinates) for the four cardinal directions.
-	// Assuming the directions are indexed as N, E, S, W, this means positive y is down the screen.
+	// 0 is North, 1 is East, 2 is South, and 3 is West.
 	static constexpr int DX[NDirs] = {0, 2, 0, -2};
 	static constexpr int DY[NDirs] = {-2, 0, 2, 0};
 };
@@ -113,10 +116,6 @@ void Search(
 // Counts the number of Hs and empty squares appearing in the four squares that neighbor (x, y).
 void CountNeighbors(int x, int y, int &numH, int &numEmpty);
 
-// Prints an ASCII representation of the board. (Not much transformation needed, since the board
-// stores ASCII characters.)
-void PrintBoard(Board const& board);
-void PrintBoard() { PrintBoard(TheBoard); }
 
 int main(int argc, const char *argv[]) {
 	if (argc > 1) {
@@ -165,10 +164,10 @@ int main(int argc, const char *argv[]) {
 
 	cout << "Found " << Solutions.size() << " optimal solutions (score " << MaxScore << "):\n" << endl;
 	for (auto it = Solutions.begin(); it != Solutions.end(); ++it) {
-		PrintBoard(*it);
+		it->print();
 	}
-	cout << "Found " << Solutions.size() << " optimal solutions (score " << MaxScore << ").\n" << endl;
-	cout << "Runtime: " << elapsed << " milliseconds\n";
+	cout << "Found " << Solutions.size() << " optimal solutions (score " << MaxScore << ").\n";
+	cout << "Runtime: " << elapsed << " milliseconds\n\n";
 }
 
 
@@ -186,7 +185,7 @@ void Search(
 		cout << "Score = " << score << "\n";
 		cout << "Potential = " << potential << "\n";
 		//cout << "Score upper bound = " << score + (degree < potential ? degree : ((degree - potential) / 2 + potential)) << "\n";
-		PrintBoard();
+		TheBoard.print();
 	}
 
 	// Check if we've placed all amino acids.
@@ -205,7 +204,7 @@ void Search(
 			Solutions.push_back(TheBoard);
 			if (verbose) {
 				cout << "Score = " << score << "\n";
-				PrintBoard();
+				TheBoard.print();
 			}
 		}
 
@@ -310,10 +309,10 @@ void CountNeighbors(int x, int y, int &numH, int &numEmpty) {
 }
 
 
-void PrintBoard(Board const& board) {
+void SquareBoard::print() {
 	auto const row_is_empty = [&](int row) {
 		for (int i = 0; i < MAXDIM; ++i) {
-			if (board[row][i] != ' ') {
+			if (data[row][i] != ' ') {
 				return false;
 			}
 		}
@@ -332,7 +331,7 @@ void PrintBoard(Board const& board) {
 
 	for (int y = miny; y <= maxy; ++y) {
 		for (int x = 0; x < MAXDIM; ++x) {
-			cout << board[y][x];
+			cout << data[y][x];
 		}
 		cout << '\n';
 	}
