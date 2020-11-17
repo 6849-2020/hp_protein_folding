@@ -24,6 +24,9 @@ using namespace std;
 
 constexpr int MAXDIM = 100;
 
+// When true, we print intermediate results. It can be changed here or on the command line.
+bool verbose = false;
+
 // This strucutre is used to represent partial and complete folded states. It's in a format that's
 // easy to print, but not super space (or cache) efficient. Indexing is matrix style. So the first
 // coordinate determines vertical position, and increasing it moves you from the top to the bottom.
@@ -75,6 +78,10 @@ int main(int argc, const char *argv[]) {
 	}
 	if (argc > 2) {
 		MaxScore = atoi(argv[2]);
+	}
+	if (argc > 3) {
+		// If any third argument is supplied, we interpret that as asking for verbose output.
+		verbose = true;
 	}
 	cout << "Folding " << Pattern << " for scores >= " << MaxScore << endl;
 
@@ -131,16 +138,14 @@ void Search(
 	int potential,
 	bool turned
 ) {
-	/*
-	// Uncomment this to print intermediate chains.
-	if (index == 8) {
+	// Print some intermediate chains if the verbose flag is set.
+	if (verbose && index == 8) {
 		cout << "Interim...\n";
 		cout << "Score = " << score << "\n";
 		cout << "Potential = " << potential << "\n";
 		//		cout << "Score upper bound = " << score + (degree < potential ? degree : ((degree - potential) / 2 + potential)) << "\n";
 		PrintBoard();
 	}
-	*/
 
 	// Check if we've placed all amino acids.
 	if (index == Pattern.length()) {
@@ -148,26 +153,34 @@ void Search(
 		if (score > MaxScore) {
 			Solutions.clear();
 			MaxScore = score;
+			if (verbose) {
+				cout << "New max score: " << MaxScore << '\n';
+			}
 		}
 
 		// Save the solution if it achieves the maximum score.
 		if (score == MaxScore) {
 			Solutions.push_back(TheBoard);
-			//cout << "Score = " << score << "\n";
-			//PrintBoard();
+			if (verbose) {
+				cout << "Score = " << score << "\n";
+				PrintBoard();
+			}
 		}
 
 		return;
 	}
 
+	// Examine all squares where we could place the next amino acid.
 	for (int dir = 0; dir < 4; ++dir) {
 		int const newx = fromX + 2 * DX[dir];
 		int const newy = fromY + 2 * DY[dir];
 
+		// If the square is already occupied, we can't use it.
 		if (TheBoard[newy][newx] != ' ' || !(turned || dir != 3)) {
 			continue;
 		}
 
+		// Count this square's H and empty neighbors.
 		int hneighbors, emptyneighbors;
 		CountNeighbors(newx, newy, hneighbors, emptyneighbors);
 
