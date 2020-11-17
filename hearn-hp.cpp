@@ -51,17 +51,32 @@ struct SquareBoard {
 		}
 	}
 
+	void draw_link(int y, int x, int dir) {
+		int const link_y = y + DY[dir] / 2;
+		int const link_x = x + DX[dir] / 2;
+		data[link_y][link_x] = (dir % 2 ? '-' : '|');
+	}
+
+	void erase_link(int y, int x, int dir) {
+		int const link_y = y + DY[dir] / 2;
+		int const link_x = x + DX[dir] / 2;
+		data[link_y][link_x] = ' ';
+	}
+
 	std::array<std::array<char, MAXDIM>, MAXDIM> data;
+
+	static constexpr int NDirs = 4;
 
 	// These provide the offsets (in x and y coordinates) for the four cardinal directions.
 	// Assuming the directions are indexed as N, E, S, W, this means positive y is down the screen.
-	static constexpr int DX[4] = { 0, 1, 0, -1 };
-	static constexpr int DY[4] = { -1, 0, 1, 0 };
+	static constexpr int DX[NDirs] = {0, 2, 0, -2};
+	static constexpr int DY[NDirs] = {-2, 0, 2, 0};
 };
 
-// Pre C++17, the compiler gets salty if we don't give an explicit definition somewhere.
-constexpr int SquareBoard::DX[4];
-constexpr int SquareBoard::DY[4];
+// Pre C++17, the compiler gets salty if we don't give explicit definitions somewhere.
+constexpr int SquareBoard::NDirs;
+constexpr int SquareBoard::DX[SquareBoard::NDirs];
+constexpr int SquareBoard::DY[SquareBoard::NDirs];
 
 // This will allow us to switch to a hexagonal board.
 using Board = SquareBoard;
@@ -198,9 +213,9 @@ void Search(
 	}
 
 	// Examine all squares where we could place the next amino acid.
-	for (int dir = 0; dir < 4; ++dir) {
-		int const newx = fromX + 2 * Board::DX[dir];
-		int const newy = fromY + 2 * Board::DY[dir];
+	for (int dir = 0; dir < Board::NDirs; ++dir) {
+		int const newx = fromX + Board::DX[dir];
+		int const newy = fromY + Board::DY[dir];
 
 		// If the square is already occupied, we can't use it.
 		// If we haven't turned before (i.e. all amino acids have been placed in a straight line),
@@ -227,13 +242,13 @@ void Search(
 		// This reduces our new potential, since even though there's an empty cell next to an H, we
 		// couldn't possibly fold the protein chain to fill it. A potential improvement to the
 		// algorithm would be to check for empty spaces that are larger than one square.
-		for (int d2 = 0; d2 < 4; ++d2) {
+		for (int d2 = 0; d2 < Board::NDirs; ++d2) {
 			if (d2 == dir) {
 				continue;
 			}
 
-			int const x = fromX + 2 * Board::DX[d2];
-			int const y = fromY + 2 * Board::DY[d2];
+			int const x = fromX + Board::DX[d2];
+			int const y = fromY + Board::DY[d2];
 
 			if (TheBoard[y][x] == ' ') {
 				int h, e;
@@ -261,19 +276,16 @@ void Search(
 		// Q: How can we come up with a tighter bound?
 		int const delta = (degree < newp) ? degree : ((degree - newp) / 2 + newp);
 		if (newscore + delta >= MaxScore) {
-			int const link_y = fromY + Board::DY[dir];
-			int const link_x = fromX + Board::DX[dir];
-
 			// Place the amino acid.
 			TheBoard[newy][newx] = Pattern[index];
-			TheBoard[link_y][link_x] = (dir % 2 ? '-' : '|');
+			TheBoard.draw_link(fromY, fromX, dir);
 
 			// Recurse.
 			// We break symmetry the first time we stop placing amino acids in a straight line.
 			Search(index + 1, newy, newx, newscore, newp, turned || dir != 2);
 
 			// Remove this amino acid.
-			TheBoard[link_y][link_x] = ' ';
+			TheBoard.erase_link(fromY, fromX, dir);
 			TheBoard[newy][newx] = ' ';
 		}
 	}
@@ -284,9 +296,9 @@ void CountNeighbors(int x, int y, int &numH, int &numEmpty) {
 	numH = 0;
 	numEmpty = 0;
 
-	for (int dir = 0; dir < 4; ++dir) {
-		int const newx = x + 2 * Board::DX[dir];
-		int const newy = y + 2 * Board::DY[dir];
+	for (int dir = 0; dir < Board::NDirs; ++dir) {
+		int const newx = x + Board::DX[dir];
+		int const newy = y + Board::DY[dir];
 
 		if (TheBoard[newy][newx] == 'H') {
 			++numH;
