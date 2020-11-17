@@ -84,8 +84,57 @@ constexpr int SquareBoard::NDirs;
 constexpr int SquareBoard::DX[SquareBoard::NDirs];
 constexpr int SquareBoard::DY[SquareBoard::NDirs];
 
+
+struct HexagonalBoard {
+	// Boards are default constructible, so that they can be put in vectors and such without
+	// incurring any extra initialization overhead.
+	HexagonalBoard() {}
+
+	// These allow us to write TheBoard(row, col).
+	// Our array of data is secretly four times as large as SquareBoard's. Otherwise there wouldn't
+	// be room to draw the diagonal links. Really this should be rewritten so that the data
+	// structure is minimal and printing does whatever transformations are needed to generate the
+	// ASCII representation. It would make the algorithm run a good bit faster too. But this is a
+	// quick hack to get things going.
+	char operator()(int row, int col) const { return data[2 * row][2 * col]; }
+	char& operator()(int row, int col) { return data[2 * row][2 * col]; }
+
+	// This fills a board with spaces.
+	// Note: memset would be faster (unless the compiler is already smart enough to call it for us).
+	void clear() {
+		for (int i = 0; i < 2 * MAXDIM; ++i) {
+			for (int j = 0; j < 2 * MAXDIM; ++j) {
+				data[j][i] = ' ';
+			}
+		}
+	}
+
+	void draw_link(int y, int x, int dir);
+	void erase_link(int y, int x, int dir);
+
+	std::array<std::array<char, 2 * MAXDIM>, 2 * MAXDIM> data;
+
+	void print();
+
+	static constexpr int NDirs = 6;
+
+	// These provide the offsets (in x and y coordinates) for the six neighbors.
+	// 0 is East, 1 is Northeast, 2 is Northwest, 3 is West, 4 is Southwest, 5 is Southeast.
+	static constexpr int DX[NDirs] = {2,  1, -1, -2, -1, 1};
+	static constexpr int DY[NDirs] = {0, -1, -1,  0,  1, 1};
+
+	// Returns true if moving in direction 0 followed by this direction makes a right turn.
+	static bool is_right_turn(int dir) { return dir == 4 || dir == 5; }
+};
+
+// Pre C++17, the compiler gets salty if we don't give explicit definitions somewhere.
+constexpr int HexagonalBoard::DX[HexagonalBoard::NDirs];
+constexpr int HexagonalBoard::DY[HexagonalBoard::NDirs];
+
+
 // This will allow us to switch to a hexagonal board.
-using Board = SquareBoard;
+//using Board = SquareBoard;
+using Board = HexagonalBoard;
 Board TheBoard;
 
 // This records the highest score we've seen so far.
@@ -142,6 +191,7 @@ int main(int argc, const char *argv[]) {
 
 	// Place the first two amino acids. Note that this breaks rotational symmetry, so we won't get
 	// rotated versions of the same solution. (Mirror symmetry is broken below.)
+	TheBoard.clear();
 	int const y0 = MAXDIM / 2;
 	int const x0 = MAXDIM / 2;
 	int const dir0 = 0;
@@ -348,4 +398,93 @@ void SquareBoard::print() {
 	}
 
 	cout << string(MAXDIM, '-') << "\n";
+}
+
+void HexagonalBoard::print() {
+	auto const row_is_empty = [&](int row) {
+		for (int i = 0; i < 2 * MAXDIM; ++i) {
+			if (data[row][i] != ' ') {
+				return false;
+			}
+		}
+		return true;
+	};
+
+	int miny = 0;
+	while (row_is_empty(miny)) {
+		++miny;
+	}
+
+	int maxy = 2 * MAXDIM - 1;
+	while (row_is_empty(maxy)) {
+		--maxy;
+	}
+
+	cout << ' ' << string(2 * MAXDIM, '-') << "\n";
+	for (int y = miny; y <= maxy; ++y) {
+		cout << '|';
+		for (int x = 0; x < 2 * MAXDIM; ++x) {
+			cout << data[y][x];
+		}
+		cout << "|\n";
+	}
+	cout << ' ' << string(2 * MAXDIM, '-') << "\n";
+}
+
+void HexagonalBoard::draw_link(int y, int x, int dir) {
+	y *= 2;
+	x *= 2;
+	switch (dir) {
+		case 0:
+			data[y][x + 1] = '-';
+			data[y][x + 2] = '-';
+			data[y][x + 3] = '-';
+			break;
+		case 1:
+			data[y - 1][x + 1] = '/';
+			break;
+		case 2:
+			data[y - 1][x - 1] = '\\';
+			break;
+		case 3:
+			data[y][x - 1] = '-';
+			data[y][x - 2] = '-';
+			data[y][x - 3] = '-';
+			break;
+		case 4:
+			data[y + 1][x - 1] = '/';
+			break;
+		case 5:
+			data[y + 1][x + 1] = '\\';
+			break;
+	}
+}
+
+void HexagonalBoard::erase_link(int y, int x, int dir) {
+	y *= 2;
+	x *= 2;
+	switch (dir) {
+		case 0:
+			data[y][x + 1] = ' ';
+			data[y][x + 2] = ' ';
+			data[y][x + 3] = ' ';
+			break;
+		case 1:
+			data[y - 1][x + 1] = ' ';
+			break;
+		case 2:
+			data[y - 1][x - 1] = ' ';
+			break;
+		case 3:
+			data[y][x - 1] = ' ';
+			data[y][x - 2] = ' ';
+			data[y][x - 3] = ' ';
+			break;
+		case 4:
+			data[y + 1][x - 1] = ' ';
+			break;
+		case 5:
+			data[y + 1][x + 1] = ' ';
+			break;
+	}
 }
