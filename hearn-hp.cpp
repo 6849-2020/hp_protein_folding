@@ -62,12 +62,16 @@ struct SquareBoard {
 		}
 	}
 
+	// This just places a link character ('-' or '|') going in the specified direction from the
+	// specified coordinates. This doesn't help the algorithm at all; it's just to make the ASCII
+	// representation human readable.
 	void draw_link(int y, int x, int dir) {
 		int const link_y = y + DY[dir] / 2;
 		int const link_x = x + DX[dir] / 2;
 		data[link_y][link_x] = (dir % 2 ? '-' : '|');
 	}
 
+	// This removes a link character.
 	void erase_link(int y, int x, int dir) {
 		int const link_y = y + DY[dir] / 2;
 		int const link_x = x + DX[dir] / 2;
@@ -183,14 +187,15 @@ int verbosity = 1;
 
 void Search(
 	int index,        // index of the next amino acid to be placed
-	int fromY,        // x coordinate of last placed amino acid
-	int fromX,        // y coordinate of last placed amino acid
+	int fromY,        // y coordinate of last placed amino acid
+	int fromX,        // x coordinate of last placed amino acid
 	int score,        // score of placed amino acids so far
 	int potential,    // roughly the number of empty squares that neighbor H amino acids
 	bool turned       // indicates if the current pattern has broken mirror symmetry yet
 );
 
 // Counts the number of Hs and empty squares appearing in the four squares that neighbor (x, y).
+// Note that this takes x first, then y, unlike the other methods in this file.
 void CountNeighbors(int x, int y, int &numH, int &numEmpty);
 
 
@@ -219,15 +224,10 @@ int main(int argc, const char *argv[]) {
 	cout << "Folding " << Pattern << " for scores >= " << MaxScore << endl;
 
 	// Initialize the board. Every square starts blank.
-	for (int i = 0; i < MAXDIM; ++i) {
-		for (int j = 0; j < MAXDIM; ++j) {
-			TheBoard(j, i) = ' ';
-		}
-	}
+	TheBoard.clear();
 
 	// Place the first two amino acids. Note that this breaks rotational symmetry, so we won't get
 	// rotated versions of the same solution. (Mirror symmetry is broken below.)
-	TheBoard.clear();
 	int const y0 = MAXDIM / 2;
 	int const x0 = MAXDIM / 2;
 	int const dir0 = 0;
@@ -240,9 +240,9 @@ int main(int argc, const char *argv[]) {
 	// Start the search.
 	auto start = std::chrono::high_resolution_clock::now();
 	Search(
-		// We've placed two amino acids so far.
+		// We've placed amino acids 0 and 1; next up is 2.
 		2,
-		// These are the coordinates of the second amino acid in the chain.
+		// These are the coordinates of amino acid 1 (i.e. the most recently placed amino acid).
 		y1,
 		x1,
 		// H-H has score 1, all other two amino acid chains have score 0.
@@ -374,12 +374,13 @@ void Search(
 		//    If it's not, perhaps it should be changed for hexagonal boards.
 		int const delta = (degree < newp) ? degree : ((degree - newp) / 2 + newp);
 		if (newscore + delta >= MaxScore) {
-			// Place the amino acid.
+			// Place this amino acid.
 			TheBoard(newy, newx) = Pattern[index];
 			TheBoard.draw_link(fromY, fromX, dir);
 
 			// Recurse.
 			// We break mirror symmetry the first time we place an amino acid not along direction 0.
+			// TODO: It would probably run faster if we converted recursion to iteration.
 			Search(index + 1, newy, newx, newscore, newp, turned || dir != 0);
 
 			// Remove this amino acid.
