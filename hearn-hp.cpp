@@ -31,7 +31,8 @@ constexpr int MAXDIM = 120;
 // coordinate determines vertical position, and increasing it moves you from the top to the bottom.
 // The second coordinate determines horizontal position, and increasing it moves you from the left
 // to the right.
-struct SquareBoard {
+class SquareBoard {
+public:
 	// Boards are default constructible, so that they can be put in vectors and such without
 	// incurring any extra initialization overhead.
 	SquareBoard() {}
@@ -81,8 +82,6 @@ struct SquareBoard {
 	// Prints the board to cout as ASCII art.
 	void print();
 
-	std::array<std::array<char, MAXDIM>, MAXDIM> data;
-
 	static constexpr int NDirs = 4;
 
 	// These provide the offsets (in x and y coordinates) for the four cardinal directions.
@@ -92,6 +91,9 @@ struct SquareBoard {
 
 	// Returns true if going from direction 0 to this direction requires a right turn.
 	static bool is_right_turn(int dir) { return dir == 1; }
+
+private:
+	std::array<std::array<char, MAXDIM>, MAXDIM> data;
 };
 
 // Pre C++17, the compiler gets salty if we don't give explicit definitions somewhere.
@@ -100,7 +102,9 @@ constexpr int SquareBoard::DX[SquareBoard::NDirs];
 constexpr int SquareBoard::DY[SquareBoard::NDirs];
 
 
+// This has the same interface as SquareGrid, but it represents a triangular/hexagonal grid.
 struct HexagonalBoard {
+public:
 	// Boards are default constructible, so that they can be put in vectors and such without
 	// incurring any extra initialization overhead.
 	HexagonalBoard() {}
@@ -143,8 +147,6 @@ struct HexagonalBoard {
 	void draw_link(int y, int x, int dir);
 	void erase_link(int y, int x, int dir);
 
-	std::array<std::array<char, 2 * MAXDIM>, 2 * MAXDIM> data;
-
 	void print();
 
 	static constexpr int NDirs = 6;
@@ -156,6 +158,9 @@ struct HexagonalBoard {
 
 	// Returns true if moving in direction 0 followed by this direction makes a right turn.
 	static bool is_right_turn(int dir) { return dir == 4 || dir == 5; }
+
+private:
+	std::array<std::array<char, 2 * MAXDIM>, 2 * MAXDIM> data;
 };
 
 // Pre C++17, the compiler gets salty if we don't give explicit definitions somewhere.
