@@ -22,7 +22,7 @@
 
 using namespace std;
 
-constexpr int MAXDIM = 100;
+constexpr int MAXDIM = 120;
 
 // This strucutre is used to represent partial and complete folded states. It's in a format that's
 // easy to print, but not super space (or cache) efficient. Indexing is matrix style. So the first
@@ -404,6 +404,15 @@ void SquareBoard::print() {
 		return true;
 	};
 
+	auto const col_is_empty = [&](int col) {
+		for (int i = 0; i < MAXDIM; ++i) {
+			if (data[i][col] != ' ') {
+				return false;
+			}
+		}
+		return true;
+	};
+
 	int miny = 0;
 	while (row_is_empty(miny)) {
 		++miny;
@@ -414,14 +423,34 @@ void SquareBoard::print() {
 		--maxy;
 	}
 
-	for (int y = miny; y <= maxy; ++y) {
-		for (int x = 0; x < MAXDIM; ++x) {
-			cout << data[y][x];
-		}
-		cout << '\n';
+	int minx = 0;
+	while (col_is_empty(minx)) {
+		++minx;
+	}
+	// It's good to have a border on the left and right, or things look cramped.
+	if (minx > 0) {
+		--minx;
 	}
 
-	cout << string(MAXDIM, '-') << "\n";
+	int maxx = MAXDIM - 1;
+	while (col_is_empty(maxx)) {
+		--maxx;
+	}
+	if (maxx < MAXDIM - 1) {
+		++maxx;
+	}
+
+	int const n_cols = maxx - minx + 1;
+
+	cout << ' ' << string(n_cols, '-') << '\n';
+	for (int y = miny; y <= maxy; ++y) {
+		cout << '|';
+		for (int x = minx; x <= maxx; ++x) {
+			cout << data[y][x];
+		}
+		cout << "|\n";
+	}
+	cout << ' ' << string(n_cols, '-') << '\n';
 }
 
 void HexagonalBoard::print() {
