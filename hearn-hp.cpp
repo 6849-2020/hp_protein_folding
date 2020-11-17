@@ -35,8 +35,20 @@ struct SquareBoard {
 	SquareBoard() {}
 
 	// These allow us to write TheBoard(row, col).
-	char operator()(int row, int col) const { return data[row][col]; }
-	char& operator()(int row, int col) { return data[row][col]; }
+	char operator()(int row, int col) const {
+		if (row < 0 || MAXDIM <= row || col < 0 || MAXDIM <= col) {
+			cout << "Error: TheBoard is too small. Increase MAXDIM.\n";
+			exit(1);
+		}
+		return data[row][col];
+	}
+	char& operator()(int row, int col) {
+		if (row < 0 || MAXDIM <= row || col < 0 || MAXDIM <= col) {
+			cout << "Error: TheBoard is too small. Increase MAXDIM.\n";
+			exit(1);
+		}
+		return data[row][col];
+	}
 
 	// This fills a board with spaces.
 	// Note: memset would be faster (unless the compiler is already smart enough to call it for us).
@@ -146,8 +158,8 @@ constexpr int HexagonalBoard::DY[HexagonalBoard::NDirs];
 
 
 // Changing this line changes the grid. Square and hexagonal boards are supported.
-//using Board = SquareBoard;
-using Board = HexagonalBoard;
+using Board = SquareBoard;
+//using Board = HexagonalBoard;
 
 // This is the global board that we modify as we run the algorithm.
 Board TheBoard;
