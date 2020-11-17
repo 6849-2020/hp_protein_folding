@@ -422,6 +422,15 @@ void HexagonalBoard::print() {
 		return true;
 	};
 
+	auto const col_is_empty = [&](int col) {
+		for (int i = 0; i < 2 * MAXDIM; ++i) {
+			if (data[i][col] != ' ') {
+				return false;
+			}
+		}
+		return true;
+	};
+
 	int miny = 0;
 	while (row_is_empty(miny)) {
 		++miny;
@@ -432,15 +441,34 @@ void HexagonalBoard::print() {
 		--maxy;
 	}
 
-	cout << ' ' << string(2 * MAXDIM, '-') << "\n";
+	int minx = 0;
+	while (col_is_empty(minx)) {
+		++minx;
+	}
+	// It's good to have a border on the left and right, or things look cramped.
+	if (minx > 0) {
+		--minx;
+	}
+
+	int maxx = 2 * MAXDIM - 1;
+	while (col_is_empty(maxx)) {
+		--maxx;
+	}
+	if (maxx < 2 * MAXDIM - 1) {
+		++maxx;
+	}
+
+	int const n_cols = maxx - minx + 1;
+
+	cout << ' ' << string(n_cols, '-') << '\n';
 	for (int y = miny; y <= maxy; ++y) {
 		cout << '|';
-		for (int x = 0; x < 2 * MAXDIM; ++x) {
+		for (int x = minx; x <= maxx; ++x) {
 			cout << data[y][x];
 		}
 		cout << "|\n";
 	}
-	cout << ' ' << string(2 * MAXDIM, '-') << "\n";
+	cout << ' ' << string(n_cols, '-') << '\n';
 }
 
 void HexagonalBoard::draw_link(int y, int x, int dir) {
