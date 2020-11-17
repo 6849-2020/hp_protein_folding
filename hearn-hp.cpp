@@ -143,7 +143,7 @@ void Search(
 		cout << "Interim...\n";
 		cout << "Score = " << score << "\n";
 		cout << "Potential = " << potential << "\n";
-		//		cout << "Score upper bound = " << score + (degree < potential ? degree : ((degree - potential) / 2 + potential)) << "\n";
+		//cout << "Score upper bound = " << score + (degree < potential ? degree : ((degree - potential) / 2 + potential)) << "\n";
 		PrintBoard();
 	}
 
@@ -185,14 +185,18 @@ void Search(
 		CountNeighbors(newx, newy, hneighbors, emptyneighbors);
 
 		// The new potential is the old one with two changes.
-		// We subtract the number of H neighbors, since are placing an amino acid in that spot.
-		// If this node is an H node, we add the number of empty neighbors.
+		// - We subtract the number of H neighbors, since we are placing an amino acid now that
+		//   either gains the point or doesn't.
+		// - If this node is an H node, we add the number of empty neighbors.
 		int newp = potential + emptyneighbors * (Pattern[index] == 'H') - hneighbors;
-		// The new score is the old one plus the number of H neighbors (if are placing an H now).
+
+		// The new score is the old one plus the number of H neighbors (if we're placing an H now).
 		int newscore = score + hneighbors * (Pattern[index] == 'H');
 
 		// Check if we just isolated an empty space.
-		// Q: What about larger regions of empty space?
+		// This reduces our new potential, since even though there's an empty cell next to an H, we
+		// couldn't possibly fold the protein chain to fill it. A potential improvement to the
+		// algorithm would be to check for empty spaces that are larger than one square.
 		for (int d2 = 0; d2 < 4; ++d2) {
 			if (d2 == dir) {
 				continue;
@@ -211,19 +215,30 @@ void Search(
 			}
 		}
 
+		// Compute the maximum possible number of points we could still add to our score.
+		// (Or at least something similar to this.)
+		// Q: Aren't we double counting H-H links within the sequence?
 		int degree = 0;
 		for (int i = index + 1; i < Pattern.size(); ++i) {
 			if (Pattern[i] == 'H') {
-				// Q: Why do we allow ourselves to wrap around here?
 				degree += 2 + (Pattern[i - 1] == 'H') + (Pattern[(i + 1) % Pattern.size()] == 'H');
 			}
 		}
 
+		// Only place an amino acid here if it looks possible to match or beat MaxScore.
+		// Q: Are there false negatives? I.e. configurations that we throw away that would achieve
+		//    the max score?
+		// Q: How can we come up with a tighter bound?
 		int const delta = (degree < newp) ? degree : ((degree - newp) / 2 + newp);
 		if (newscore + delta >= MaxScore) {
+			// Place the amino acid.
 			TheBoard[newy][newx] = Pattern[index];
 			TheBoard[fromY + DY[dir]][fromX + DX[dir]] = (dir % 2 ? '-' : '|');
+
+			// Recurse.
 			Search(index + 1, newy, newx, newscore, newp, turned || dir != 2);
+
+			// Remove this amino acid.
 			TheBoard[fromY + DY[dir]][fromX + DX[dir]] = ' ';
 			TheBoard[newy][newx] = ' ';
 		}
