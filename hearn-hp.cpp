@@ -173,8 +173,11 @@ int MaxScore = 0;
 // This records copies of all solutions we've found with the maximum score.
 vector<Board> Solutions;
 
-// When true, we print intermediate results. It can be changed here or on the command line.
-bool verbose = false;
+// 0 => no intermediate output
+// 1 => print when we find a folding that beats our current best score
+// 2 => print when we find a folding that beats or matches our current best score
+// 3 => print subchains of a certain length (see below)
+int verbosity = 1;
 
 void Search(
 	int index,        // index of the next amino acid to be placed
@@ -201,18 +204,15 @@ int main(int argc, const char *argv[]) {
 	}
 
 	if (argc > 1) {
-		// The first argument can set the pattern (e.g. HPPHPHPPHP).
 		Pattern = argv[1];
 	}
 	if (argc > 2) {
-		// The second argument can set the target score.
-		// It's 0 by default, but supplying a higher number can enable the algorithm to prune
-		// branches more greedily and thus run faster.
+		// The target score is 0 by default, but supplying a higher number can enable the algorithm
+		// to prune branches more greedily and thus run faster.
 		MaxScore = atoi(argv[2]);
 	}
 	if (argc > 3) {
-		// If any third argument is supplied, we interpret that as asking for verbose output.
-		verbose = true;
+		verbosity = atoi(argv[3]);
 	}
 	cout << "Folding " << Pattern << " for scores >= " << MaxScore << endl;
 
@@ -270,8 +270,8 @@ void Search(
 	int potential,
 	bool turned
 ) {
-	// Print some intermediate chains if the verbose flag is set.
-	if (verbose && index == 8) {
+	// Print some partial foldings if we're in verbose mode.
+	if (verbosity >= 3 && index == 8) {
 		cout << "Interim...\n";
 		cout << "Score = " << score << "\n";
 		cout << "Potential = " << potential << "\n";
@@ -283,17 +283,19 @@ void Search(
 		// Update MaxScore if this is a new record.
 		if (score > MaxScore) {
 			Solutions.clear();
+			Solutions.push_back(TheBoard);
 			MaxScore = score;
-			if (verbose) {
+			if (verbosity >= 1) {
 				cout << "New max score: " << MaxScore << '\n';
+				TheBoard.print();
 			}
 		}
 
 		// Save the solution if it achieves the maximum score.
-		if (score == MaxScore) {
+		else if (score == MaxScore) {
 			Solutions.push_back(TheBoard);
-			if (verbose) {
-				cout << "Score = " << score << "\n";
+			if (verbosity >= 2) {
+				cout << "Score: " << score << "\n";
 				TheBoard.print();
 			}
 		}
