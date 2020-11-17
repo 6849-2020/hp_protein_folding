@@ -37,9 +37,9 @@ struct SquareBoard {
 	// incurring any extra initialization overhead.
 	SquareBoard() {}
 
-	// These allow us to write TheBoard[row][col] rather than TheBoard.data[row][col].
-	std::array<char, MAXDIM>& operator[](int row) { return data[row]; }
-	std::array<char, MAXDIM> const& operator[](int row) const { return data[row]; }
+	// These allow us to write TheBoard(row, col).
+	char operator()(int row, int col) const { return data[row][col]; }
+	char& operator()(int row, int col) { return data[row][col]; }
 
 	// This fills a board with spaces.
 	// Note: memset would be faster (unless the compiler is already smart enough to call it for us).
@@ -133,16 +133,16 @@ int main(int argc, const char *argv[]) {
 	// Initialize the board. Every square starts blank.
 	for (int i = 0; i < MAXDIM; ++i) {
 		for (int j = 0; j < MAXDIM; ++j) {
-			TheBoard[j][i] = ' ';
+			TheBoard(j, i) = ' ';
 		}
 	}
 
 	// Place the first two amino acids. We always position the second right below the first. Note
 	// that this breaks rotational symmetry, so we won't get rotated versions of the same solution.
 	// (Mirror symemtry is broken below, search for "turned".)
-	TheBoard[MAXDIM / 2][MAXDIM / 2] = Pattern[0];
-	TheBoard[MAXDIM / 2 + 1][MAXDIM / 2] = '|';
-	TheBoard[MAXDIM / 2 + 2][MAXDIM / 2] = Pattern[1];
+	TheBoard(MAXDIM / 2, MAXDIM / 2) = Pattern[0];
+	TheBoard(MAXDIM / 2 + 1, MAXDIM / 2) = '|';
+	TheBoard(MAXDIM / 2 + 2, MAXDIM / 2) = Pattern[1];
 
 	// Start the search.
 	auto start = std::chrono::high_resolution_clock::now();
@@ -220,7 +220,7 @@ void Search(
 		// If we haven't turned before (i.e. all amino acids have been placed in a straight line),
 		// then we require that this one be placed to the right. This prevents us from getting
 		// mirror images of all our solutions.
-		if (TheBoard[newy][newx] != ' ' || (!turned && dir == 3)) {
+		if (TheBoard(newy, newx) != ' ' || (!turned && dir == 3)) {
 			continue;
 		}
 
@@ -249,7 +249,7 @@ void Search(
 			int const x = fromX + Board::DX[d2];
 			int const y = fromY + Board::DY[d2];
 
-			if (TheBoard[y][x] == ' ') {
+			if (TheBoard(y, x) == ' ') {
 				int h, e;
 				CountNeighbors(x, y, h, e);
 				// If so, subtract inaccessible potential.
@@ -276,7 +276,7 @@ void Search(
 		int const delta = (degree < newp) ? degree : ((degree - newp) / 2 + newp);
 		if (newscore + delta >= MaxScore) {
 			// Place the amino acid.
-			TheBoard[newy][newx] = Pattern[index];
+			TheBoard(newy, newx) = Pattern[index];
 			TheBoard.draw_link(fromY, fromX, dir);
 
 			// Recurse.
@@ -285,7 +285,7 @@ void Search(
 
 			// Remove this amino acid.
 			TheBoard.erase_link(fromY, fromX, dir);
-			TheBoard[newy][newx] = ' ';
+			TheBoard(newy, newx) = ' ';
 		}
 	}
 }
@@ -299,10 +299,10 @@ void CountNeighbors(int x, int y, int &numH, int &numEmpty) {
 		int const newx = x + Board::DX[dir];
 		int const newy = y + Board::DY[dir];
 
-		if (TheBoard[newy][newx] == 'H') {
+		if (TheBoard(newy, newx) == 'H') {
 			++numH;
 		}
-		if (TheBoard[newy][newx] == ' ') {
+		if (TheBoard(newy, newx) == ' ') {
 			++numEmpty;
 		}
 	}
