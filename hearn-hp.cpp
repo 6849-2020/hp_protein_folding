@@ -32,7 +32,39 @@ bool verbose = false;
 // coordinate determines vertical position, and increasing it moves you from the top to the bottom.
 // The second coordinate determines horizontal position, and increasing it moves you from the left
 // to the right.
-using Board = std::array<std::array<char, MAXDIM>, MAXDIM>;
+struct SquareBoard {
+	// Boards are default constructible, so that they can be put in vectors and such without
+	// incurring any extra initialization overhead.
+	SquareBoard() {}
+
+	// These allow us to write TheBoard[row][col] rather than TheBoard.data[row][col].
+	std::array<char, MAXDIM>& operator[](int row) { return data[row]; }
+	std::array<char, MAXDIM> const& operator[](int row) const { return data[row]; }
+
+	// This fills a board with spaces.
+	// Note: memset would be faster (unless the compiler is already smart enough to call it for us).
+	void clear() {
+		for (int i = 0; i < MAXDIM; ++i) {
+			for (int j = 0; j < MAXDIM; ++j) {
+				data[j][i] = ' ';
+			}
+		}
+	}
+
+	std::array<std::array<char, MAXDIM>, MAXDIM> data;
+
+	// These provide the offsets (in x and y coordinates) for the four cardinal directions.
+	// Assuming the directions are indexed as N, E, S, W, this means positive y is down the screen.
+	static constexpr int DX[4] = { 0, 1, 0, -1 };
+	static constexpr int DY[4] = { -1, 0, 1, 0 };
+};
+
+// Pre C++17, the compiler gets salty if we don't give an explicit definition somewhere.
+constexpr int SquareBoard::DX[4];
+constexpr int SquareBoard::DY[4];
+
+// This will allow us to switch to a hexagonal board.
+using Board = SquareBoard;
 Board TheBoard;
 
 // This records the highest score we've seen so far.
@@ -125,12 +157,6 @@ int main(int argc, const char *argv[]) {
 }
 
 
-// These provide the offsets (in x and y coordinates) for the four cardinal directions.
-// Assuming the directions are indexed as N, E, S, W, this means positive y is down the screen.
-int DX[] = { 0, 1, 0, -1 };
-int DY[] = { -1, 0, 1, 0 };
-
-
 void Search(
 	int index,
 	int fromY,
@@ -173,8 +199,8 @@ void Search(
 
 	// Examine all squares where we could place the next amino acid.
 	for (int dir = 0; dir < 4; ++dir) {
-		int const newx = fromX + 2 * DX[dir];
-		int const newy = fromY + 2 * DY[dir];
+		int const newx = fromX + 2 * Board::DX[dir];
+		int const newy = fromY + 2 * Board::DY[dir];
 
 		// If the square is already occupied, we can't use it.
 		// If we haven't turned before (i.e. all amino acids have been placed in a straight line),
@@ -206,8 +232,8 @@ void Search(
 				continue;
 			}
 
-			int const x = fromX + 2 * DX[d2];
-			int const y = fromY + 2 * DY[d2];
+			int const x = fromX + 2 * Board::DX[d2];
+			int const y = fromY + 2 * Board::DY[d2];
 
 			if (TheBoard[y][x] == ' ') {
 				int h, e;
@@ -235,16 +261,19 @@ void Search(
 		// Q: How can we come up with a tighter bound?
 		int const delta = (degree < newp) ? degree : ((degree - newp) / 2 + newp);
 		if (newscore + delta >= MaxScore) {
+			int const link_y = fromY + Board::DY[dir];
+			int const link_x = fromX + Board::DX[dir];
+
 			// Place the amino acid.
 			TheBoard[newy][newx] = Pattern[index];
-			TheBoard[fromY + DY[dir]][fromX + DX[dir]] = (dir % 2 ? '-' : '|');
+			TheBoard[link_y][link_x] = (dir % 2 ? '-' : '|');
 
 			// Recurse.
 			// We break symmetry the first time we stop placing amino acids in a straight line.
 			Search(index + 1, newy, newx, newscore, newp, turned || dir != 2);
 
 			// Remove this amino acid.
-			TheBoard[fromY + DY[dir]][fromX + DX[dir]] = ' ';
+			TheBoard[link_y][link_x] = ' ';
 			TheBoard[newy][newx] = ' ';
 		}
 	}
@@ -256,8 +285,8 @@ void CountNeighbors(int x, int y, int &numH, int &numEmpty) {
 	numEmpty = 0;
 
 	for (int dir = 0; dir < 4; ++dir) {
-		int const newx = x + 2 * DX[dir];
-		int const newy = y + 2 * DY[dir];
+		int const newx = x + 2 * Board::DX[dir];
+		int const newy = y + 2 * Board::DY[dir];
 
 		if (TheBoard[newy][newx] == 'H') {
 			++numH;
