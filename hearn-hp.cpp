@@ -5,25 +5,41 @@
 //  Created by Bob Hearn on 3/19/16.
 //  Copyright © 2016 Bob Hearn. All rights reserved.
 //
+// Edited by Erik Strand on 11/16/2020.
+// - cleared out commented and incomplete code (mostly related to closed chains)
+// - added explanatory comments
+// - changed the board representation from strings to std::arrays of chars (first step toward a
+//   representation optimized for the algorithm rather than printing)
+//
 
+#include <array>
 #include <iostream>
 #include <vector>
-#include <queue>
-#include <set>
 #include <cassert>
 #include <limits>
 #include <stdlib.h>
+#include <chrono>
 
 using namespace std;
 
-typedef vector<string> Board;
+constexpr int MAXDIM = 100;
 
+// When true, we print intermediate results. It can be changed here or on the command line.
+bool verbose = false;
+
+// This strucutre is used to represent partial and complete folded states. It's in a format that's
+// easy to print, but not super space (or cache) efficient. Indexing is matrix style. So the first
+// coordinate determines vertical position, and increasing it moves you from the top to the bottom.
+// The second coordinate determines horizontal position, and increasing it moves you from the left
+// to the right.
+using Board = std::array<std::array<char, MAXDIM>, MAXDIM>;
 Board TheBoard;
 
-set<Board> Solutions;
-int NumSols;
+// This records the highest score we've seen so far.
 int MaxScore = 0;
 
+// This records all solutions we've found with the maximum score.
+vector<Board> Solutions;
 
 //string Pattern = "PHPPHPPHPPHP";
 //string Pattern = "PHPPHPHPPHPPHPPHPHPPHP";
@@ -31,95 +47,89 @@ int MaxScore = 0;
 //string Pattern = "PHPPHPHPPHPPHPHPHPPHPPHPPHPHPPHPPHPHPHPPHP";
 //string Pattern = "PHPPHPHPPHHPHPPHPHPPHH";
 //string Pattern = "PPPP";
-
 string Pattern =   "PPHPHHPHPPHPHPHPPHPHHPHPPHPHPH";		// score = 15
 //string Pattern =   "PPHHPHPHPPHPHPPHHPHPHPPHPH";				// score = 13
-
 //string Pattern = "HPPHPHPHHPHPHPPHPHPHPHPPHPHPHHPHPHPPHPHPHP";
 //string Pattern = "HPPHPHHPPHPHPHPPHHPHPPHPHPHPPHHPHHPPHPHP";
-
 //string Pattern = "PPHPHPHPHPHPPPHPHPHPHPPHPHPHPHPHPPPHPHPHPH";
-
 //string Pattern = "PHPPHPHPPHPPHPHPHPPHPPHPPHPHPHPPHPPHPPHPHPPHPHPHPPHP";
 
-//const int MAXDIM = 2 * (int) Pattern.size();
-const int MAXDIM = 100;
+void Search(
+	int index,        // index of the next amino acid to be placed
+	int fromY,        // x coordinate of last placed amino acid
+	int fromX,        // y coordinate of last placed amino acid
+	int score,        // score of placed amino acids so far
+	int potential,    // roughly the number of empty squares that neighbor H amino acids
+	bool turned       // indicates if the current pattern has broken mirror symmetry yet
+);
 
-void Search(int index, int fromY, int fromX, int score, int potential, bool turned, int distEstimate);
+// Counts the number of Hs and empty squares appearing in the four squares that neighbor (x, y).
 void CountNeighbors(int x, int y, int &numH, int &numEmpty);
-void PrintBoard();
 
-int DistanceToStart(int x, int y);
-float Heuristic(int x, int y);
-
-
-// score = # of HH pairs
-// potential = # of H-empty pairs
-
-float FScore[MAXDIM][MAXDIM], GScore[MAXDIM][MAXDIM];
-
-struct Spot
-{
-	int x, y;
-
-	Spot(int x, int y) : x(x), y(y)	{	}
-	bool operator>(const Spot &s) const
-	{
-		//		cout << "FScore[" << y << "][" << x << "] = " << FScore[y][x] << ", " << "FScore[" << s.y << "][" << s.x << "] = " << FScore[s.y][s.x]
-		//		  << ", operator> = " << (FScore[y][x] > FScore[s.y][s.x]) << "\n";
-		return FScore[y][x] > FScore[s.y][s.x];
-	}
-};
-
-
-// priority_queue returns largest element as top(). We want the smallest, so we use std::greater<Spot> for the Compare function
-// (default = std::less<Spot>).
-
-priority_queue<Spot, vector<Spot>, greater<Spot> > OpenSet;
-bool Open[MAXDIM][MAXDIM];
-
-vector<Spot> ClosedList;
-bool Closed[MAXDIM][MAXDIM];
-
+// Prints an ASCII representation of the board. (Not much transformation needed, since the board
+// stores ASCII characters.)
+void PrintBoard(Board const& board);
+void PrintBoard() { PrintBoard(TheBoard); }
 
 int main(int argc, const char *argv[]) {
-	if (argc > 1)
-	Pattern = argv[1];
-	if (argc > 2)
-	MaxScore = atoi(argv[2]);
+	if (argc > 1) {
+		Pattern = argv[1];
+	}
+	if (argc > 2) {
+		MaxScore = atoi(argv[2]);
+	}
+	if (argc > 3) {
+		// If any third argument is supplied, we interpret that as asking for verbose output.
+		verbose = true;
+	}
 	cout << "Folding " << Pattern << " for scores >= " << MaxScore << endl;
 
-	for (int i = 0; i < MAXDIM; ++i)
-	TheBoard.push_back(string(MAXDIM, ' '));
+	// Initialize the board. Every square starts blank.
+	for (int i = 0; i < MAXDIM; ++i) {
+		for (int j = 0; j < MAXDIM; ++j) {
+			TheBoard[j][i] = ' ';
+		}
+	}
 
+	// Place the first two amino acids. We always position the second right below the first. Note
+	// that this breaks rotational symmetry, so we won't get rotated versions of the same solution.
+	// (Mirror symemtry is broken below, search for "turned".)
 	TheBoard[MAXDIM / 2][MAXDIM / 2] = Pattern[0];
 	TheBoard[MAXDIM / 2 + 1][MAXDIM / 2] = '|';
 	TheBoard[MAXDIM / 2 + 2][MAXDIM / 2] = Pattern[1];
-	Search(2, MAXDIM / 2 + 2, MAXDIM / 2, Pattern[0] == 'H' && Pattern[1] == 'H', 3 * (Pattern[0] == 'H') + 3 * (Pattern[1] == 'H'), false, 3);
 
-	//	TheBoard[MAXDIM / 2 + 3][MAXDIM / 2] = '|';
-	//	TheBoard[MAXDIM / 2 + 4][MAXDIM / 2] = Pattern[2];
-
-	//	Search(3, MAXDIM / 2 + 4, MAXDIM / 2, 0, 2, true, 4);
+	// Start the search.
+	auto start = std::chrono::high_resolution_clock::now();
+	Search(
+		// We've placed two amino acids so far.
+		2,
+		// These are the coordinates of the second amino acid in the chain.
+		MAXDIM / 2 + 2,
+		MAXDIM / 2,
+		// H-H has score 1, all other two amino acid chains have score 0.
+		(Pattern[0] == 'H' && Pattern[1] == 'H') ? 1 : 0,
+		// Each amino acid could potentially have three additional H neighbors.
+		3 * (Pattern[0] == 'H') + 3 * (Pattern[1] == 'H'),
+		// So far all amino acids are in a straight line, so we haven't broken mirror symmetry.
+		false
+	);
+	auto stop = std::chrono::high_resolution_clock::now();
+	float elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
 
 	cout << "Found " << Solutions.size() << " optimal solutions (score " << MaxScore << "):\n" << endl;
-	for (set<Board>::iterator it = Solutions.begin(); it != Solutions.end(); ++it) {
-		TheBoard = *it;
-		PrintBoard();
+	for (auto it = Solutions.begin(); it != Solutions.end(); ++it) {
+		PrintBoard(*it);
 	}
 	cout << "Found " << Solutions.size() << " optimal solutions (score " << MaxScore << ").\n" << endl;
+	cout << "Runtime: " << elapsed << " milliseconds\n";
 }
 
 
+// These provide the offsets (in x and y coordinates) for the four cardinal directions.
+// Assuming the directions are indexed as N, E, S, W, this means positive y is down the screen.
 int DX[] = { 0, 1, 0, -1 };
 int DY[] = { -1, 0, 1, 0 };
 
-int NumSteps;
-
-
-// distEstimate is a guess (generally high) for path length from fromX, fromY back to start via empty squares
-// We use it as a heuristic for pruning. We will only prune if the estimate is too far, and the actual distance
-// (computed in that case) turns out to be too far.
 
 void Search(
 	int index,
@@ -127,221 +137,164 @@ void Search(
 	int fromX,
 	int score,
 	int potential,
-	bool turned,
-	int distEstimate
+	bool turned
 ) {
-	// Cycle versions:
-	/*
-	if (abs(fromX - MAXDIM / 2) + abs(fromY - MAXDIM / 2) > 2 * (Pattern.length() - index) + 2)
-		return;
-	*/
-	/*
-	if (distEstimate > Pattern.length() - index + 1) {
-		// Maybe we can't get back to the start. Find out.
-		distEstimate = DistanceToStart(fromX, fromY);
-		if (distEstimate > Pattern.length() - index + 1)
-		return;
-	}
-	*/
-
-	//	if (0)
-	if (index == 32)
-	//	if (!(++NumSteps % 100000))
-	//	if (!(++NumSteps % 10000000))
-	{
+	// Print some intermediate chains if the verbose flag is set.
+	if (verbose && index == 8) {
 		cout << "Interim...\n";
 		cout << "Score = " << score << "\n";
 		cout << "Potential = " << potential << "\n";
-		//		cout << "Score upper bound = " << score + (degree < potential ? degree : ((degree - potential) / 2 + potential)) << "\n";
+		//cout << "Score upper bound = " << score + (degree < potential ? degree : ((degree - potential) / 2 + potential)) << "\n";
 		PrintBoard();
 	}
 
+	// Check if we've placed all amino acids.
 	if (index == Pattern.length()) {
-		// check score
-
-		//	int score = 0;
-		//
-		//	for (int x = 0; x < MAXDIM; ++x)
-		//		for (int y = 0; y < MAXDIM; ++y)
-		//			if (TheBoard[y][x] == 'H')
-		//				score += (TheBoard[y + 2][x] == 'H') + (TheBoard[y][x + 2] == 'H');
-
-		if (score > MaxScore)
-		{
+		// Update MaxScore if this is a new record.
+		if (score > MaxScore) {
 			Solutions.clear();
 			MaxScore = score;
+			if (verbose) {
+				cout << "New max score: " << MaxScore << '\n';
+			}
 		}
 
-		// Found a good solution
-
-		if (score == MaxScore)
-		{
-			Solutions.insert(TheBoard);
-			cout << "Score = " << score << "\n";
-			PrintBoard();
+		// Save the solution if it achieves the maximum score.
+		if (score == MaxScore) {
+			Solutions.push_back(TheBoard);
+			if (verbose) {
+				cout << "Score = " << score << "\n";
+				PrintBoard();
+			}
 		}
-
-		//		++NumSols;
-
-		/*	Board transpose;
-
-		for (int i = 0; i < MAXDIM; ++i)
-		transpose.push_back(string(MAXDIM, ' '));
-
-		for (int x = 0; x < MAXDIM; ++x)
-		for (int y = 0; y < MAXDIM; ++y)
-		transpose[x][y] = TheBoard[y][x];
-
-		Solutions.insert(transpose);	*/
 
 		return;
 	}
 
+	// Examine all squares where we could place the next amino acid.
 	for (int dir = 0; dir < 4; ++dir) {
-		int newx = fromX + 2 * DX[dir];
-		int newy = fromY + 2 * DY[dir];
+		int const newx = fromX + 2 * DX[dir];
+		int const newy = fromY + 2 * DY[dir];
 
-		if (TheBoard[newy][newx] == ' ' && (turned || dir != 3)) {
-			int hneighbors, emptyneighbors;
+		// If the square is already occupied, we can't use it.
+		// If we haven't turned before (i.e. all amino acids have been placed in a straight line),
+		// then we require that this one be placed to the right. This prevents us from getting
+		// mirror images of all our solutions.
+		if (TheBoard[newy][newx] != ' ' || (!turned && dir == 3)) {
+			continue;
+		}
 
-			CountNeighbors(newx, newy, hneighbors, emptyneighbors);
+		// Count this square's H and empty neighbors.
+		int hneighbors, emptyneighbors;
+		CountNeighbors(newx, newy, hneighbors, emptyneighbors);
 
-			int newp = potential + emptyneighbors * (Pattern[index] == 'H') - hneighbors;
-			int newscore = score + hneighbors * (Pattern[index] == 'H');
+		// The new potential is the old one with two changes.
+		// - We subtract the number of H neighbors, since we are placing an amino acid now that
+		//   either gains the point or doesn't.
+		// - If this node is an H node, we add the number of empty neighbors.
+		int newp = potential + emptyneighbors * (Pattern[index] == 'H') - hneighbors;
 
-			// Did we just isolate an empty space?
+		// The new score is the old one plus the number of H neighbors (if we're placing an H now).
+		int newscore = score + hneighbors * (Pattern[index] == 'H');
 
-			for (int d2 = 0; d2 < 4; ++d2) {
-				int x = fromX + 2 * DX[d2];
-				int y = fromY + 2 * DY[d2];
+		// Check if we just isolated an empty space.
+		// This reduces our new potential, since even though there's an empty cell next to an H, we
+		// couldn't possibly fold the protein chain to fill it. A potential improvement to the
+		// algorithm would be to check for empty spaces that are larger than one square.
+		for (int d2 = 0; d2 < 4; ++d2) {
+			if (d2 == dir) {
+				continue;
+			}
 
-				if (dir != d2 && TheBoard[y][x] == ' ') {
-					int e, h;
+			int const x = fromX + 2 * DX[d2];
+			int const y = fromY + 2 * DY[d2];
 
-					CountNeighbors(x, y, h, e);
-
-					if (!e)
-					newp -= h;					// If so, subtract inaccessible potential
+			if (TheBoard[y][x] == ' ') {
+				int h, e;
+				CountNeighbors(x, y, h, e);
+				// If so, subtract inaccessible potential.
+				if (e == 0) {
+					newp -= h;
 				}
 			}
+		}
 
-			int degree = 0;
-
-			for (int i = index + 1; i < Pattern.size(); ++i)
-			if (Pattern[i] == 'H')
-			degree += 2 + (Pattern[i - 1] == 'H') + (Pattern[(i + 1) % Pattern.size()] == 'H');
-
-			if (newscore + (degree < newp ? degree : ((degree - newp) / 2 + newp)) >= MaxScore) {
-				TheBoard[newy][newx] = Pattern[index];
-				TheBoard[fromY + DY[dir]][fromX + DX[dir]] = (dir % 2 ? '-' : '|');
-				Search(index + 1, newy, newx, newscore, newp, turned || dir != 2, distEstimate + 2);	// typically add 2 to path?
-				TheBoard[fromY + DY[dir]][fromX + DX[dir]] = ' ';
-				TheBoard[newy][newx] = ' ';
+		// Compute the maximum possible number of points we could still add to our score.
+		// (Or at least something similar to this.)
+		// Q: Aren't we double counting H-H links within the sequence?
+		int degree = 0;
+		for (int i = index + 1; i < Pattern.size(); ++i) {
+			if (Pattern[i] == 'H') {
+				degree += 2 + (Pattern[i - 1] == 'H') + (Pattern[(i + 1) % Pattern.size()] == 'H');
 			}
+		}
+
+		// Only place an amino acid here if it looks possible to match or beat MaxScore.
+		// Q: Are there false negatives? I.e. configurations that we throw away that would achieve
+		//    the max score?
+		// Q: How can we come up with a tighter bound?
+		int const delta = (degree < newp) ? degree : ((degree - newp) / 2 + newp);
+		if (newscore + delta >= MaxScore) {
+			// Place the amino acid.
+			TheBoard[newy][newx] = Pattern[index];
+			TheBoard[fromY + DY[dir]][fromX + DX[dir]] = (dir % 2 ? '-' : '|');
+
+			// Recurse.
+			// We break symmetry the first time we stop placing amino acids in a straight line.
+			Search(index + 1, newy, newx, newscore, newp, turned || dir != 2);
+
+			// Remove this amino acid.
+			TheBoard[fromY + DY[dir]][fromX + DX[dir]] = ' ';
+			TheBoard[newy][newx] = ' ';
 		}
 	}
 }
 
 
 void CountNeighbors(int x, int y, int &numH, int &numEmpty) {
-	numH = numEmpty = 0;
+	numH = 0;
+	numEmpty = 0;
 
 	for (int dir = 0; dir < 4; ++dir) {
-		int newx = x + 2 * DX[dir];
-		int newy = y + 2 * DY[dir];
+		int const newx = x + 2 * DX[dir];
+		int const newy = y + 2 * DY[dir];
 
-		if (TheBoard[newy][newx] == 'H')
-		++numH;
-
-		if (TheBoard[newy][newx] == ' ')
-		++numEmpty;
+		if (TheBoard[newy][newx] == 'H') {
+			++numH;
+		}
+		if (TheBoard[newy][newx] == ' ') {
+			++numEmpty;
+		}
 	}
 }
 
 
-void PrintBoard() {
-	int miny = 0;
+void PrintBoard(Board const& board) {
+	auto const row_is_empty = [&](int row) {
+		for (int i = 0; i < MAXDIM; ++i) {
+			if (board[row][i] != ' ') {
+				return false;
+			}
+		}
+		return true;
+	};
 
-	while (TheBoard[miny] == string(MAXDIM, ' '))
-	++miny;
+	int miny = 0;
+	while (row_is_empty(miny)) {
+		++miny;
+	}
 
 	int maxy = MAXDIM - 1;
-
-	while (TheBoard[maxy] == string(MAXDIM, ' '))
-	--maxy;
-
-	for (int y = miny; y <= maxy; ++y)
-	cout << TheBoard[y] << "\n";
-
-	cout << string(MAXDIM, '-') << "\n";
-}
-
-
-// A* search
-int DistanceToStart(int x, int y) {
-	OpenSet.push(Spot(x, y));
-	Open[y][x] = true;
-
-	GScore[y][x] = 0;
-	FScore[y][x] = Heuristic(x, y);
-
-	while (!OpenSet.empty()) {
-		Spot current = OpenSet.top();
-
-		if (current.x == MAXDIM / 2 && current.y == MAXDIM / 2) {
-			// done -- clean up
-
-			while (!OpenSet.empty()) {
-				Open[OpenSet.top().y][OpenSet.top().x] = false;
-				OpenSet.pop();
-			}
-
-			while (ClosedList.size()) {
-				Closed[ClosedList.back().y][ClosedList.back().x] = false;
-				ClosedList.pop_back();
-			}
-
-			//		cout << "distance from " << x - MAXDIM / 2 << ", " << y - MAXDIM / 2 << " = " << FScore[current.y][current.x] << "\n";
-
-			return FScore[current.y][current.x];
-		}
-
-		OpenSet.pop();
-		Open[current.y][current.x] = false;
-
-		ClosedList.push_back(current);
-		Closed[current.y][current.x] = true;
-
-		for (int dir = 0; dir < 4; ++dir) {
-			int newx = current.x + 2 * DX[dir];
-			int newy = current.y + 2 * DY[dir];
-
-			if (
-				(TheBoard[newy][newx] == ' ' || (newx == MAXDIM / 2 && newy == MAXDIM / 2)) &&
-				!Closed[newy][newx] &&
-				!(Open[newy][newx] &&
-				GScore[current.y][current.x] + 1 >= GScore[newy][newx])
-			) {
-				// This path is the best so far. Record it!
-
-				// This node might already exist in the priority queue. We can't update its priority; we just push a new copy.
-				// I think this should not cause any problems...
-
-				GScore[newy][newx] = GScore[current.y][current.x] + 1;
-				FScore[newy][newx] = GScore[newy][newx] + Heuristic(newx, newy);
-
-				OpenSet.push(Spot(newx, newy));
-				Open[newy][newx] = true;
-			}
-		}
+	while (row_is_empty(maxy)) {
+		--maxy;
 	}
 
-	// no path
+	for (int y = miny; y <= maxy; ++y) {
+		for (int x = 0; x < MAXDIM; ++x) {
+			cout << board[y][x];
+		}
+		cout << '\n';
+	}
 
-	return numeric_limits<int>::max();
-}
-
-float Heuristic(int x, int y) {
-	float d = (abs(x - MAXDIM / 2) + abs(y - MAXDIM / 2)) / 2;
-	return d + (1 - 1 / (d + 1));
+	cout << string(MAXDIM, '-') << "\n";
 }
