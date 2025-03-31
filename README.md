@@ -7,17 +7,17 @@ different C++ compiler, edit the first line of the [Makefile](Makefile). And if 
 use `make`, you can compile it yourself like this:
 
 ```
-g++ -std=c++11 -Wall -O3 -o hearn-hp hearn-hp.cpp
+g++ -std=c++11 -Wall -O3 -o hp_folder hp_folder.cpp
 ```
 
 ## Running
 
 By default, the Makefile produces one optimized (-O3) and one debug executable. They're different
 versions of the same code &mdash; just different compiler flags. The optimized version is called
-`hearn-hp` and should give you output like this:
+`hp_folder` and should give you output like this:
 
 ```
-./hearn-hp
+./hp_folder
 Folding HHPPHPPPHHPPHPHPHPH for scores >= 0
 
 [lots of lines omitted]
@@ -61,7 +61,7 @@ The program takes three command line arguments.
    score is achieved, 2 prints when the current max score is matched or beaten, 3 prints lots of
    intermediate stuff too)
 
-So for example, you could run `hearn-hp PHHPPHPHPH 6 2`.
+So for example, you could run `hp_folder PHHPPHPHPH 6 2`.
 
 If you want to use a square grid instead of a triangular one, change lines 163-164.
 
