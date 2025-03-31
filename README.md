@@ -1,5 +1,16 @@
 # HP Protein Folding
 
+This C++ code implements a brute-force search to solve the
+[***HP protein folding problem***](https://en.wikipedia.org/wiki/Hydrophobic-polar_protein_folding_model):
+given a string of Hs and Ps
+(representing hydrophilic and hydrophobic amino acids, respectively),
+find foldings of the chain that maximize the number of neighboring pairs of Hs
+(the ***score***).
+
+This code was originally written by Bob Hearn in March 2016.
+During the [MIT class 6.849 in Fall 2020](https://courses.csail.mit.edu/6.849/fall20/),
+Erik Strand edited the code in particular to add support for triangular grids.
+
 ## Building
 
 Assuming you have `g++` and `make` installed, you can just run `make`. If you'd like to use a
