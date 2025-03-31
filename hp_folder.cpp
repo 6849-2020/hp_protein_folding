@@ -169,8 +169,11 @@ constexpr int HexagonalBoard::DY[HexagonalBoard::NDirs];
 
 
 // Changing this line changes the grid. Square and hexagonal boards are supported.
-//using Board = SquareBoard;
+#ifdef GRID_TRIANGULAR
 using Board = HexagonalBoard;
+#else
+using Board = SquareBoard;
+#endif
 
 // This is the global board that we modify as we run the algorithm.
 Board TheBoard;
