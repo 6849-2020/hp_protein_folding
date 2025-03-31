@@ -6,6 +6,20 @@ given a string of Hs and Ps
 (representing hydrophilic and hydrophobic amino acids, respectively),
 find foldings of the chain that maximize the number of neighboring pairs of Hs
 (the ***score***).
+For example:
+
+```
+
+                 ---------
+                |   P-P   |
+                |   | |   |
+                | P-H H-P |
+PHPPHPPHPPHP -> | |     | |  unique optimal folding
+                | P-H H-P |  (score 4)
+                |   | |   |
+                |   P P   |
+                 ---------
+```
 
 This code was originally written by Bob Hearn in March 2016.
 During the [MIT class 6.849 in Fall 2020](https://courses.csail.mit.edu/6.849/fall20/),
