@@ -380,7 +380,13 @@ void Search(
 		}
 
 		// Only place an amino acid here if it looks possible to match or beat MaxScore.
-		int const delta = (degree < newp) ? degree : ((degree - newp) / 2 + newp);
+		// If degree is smaller than potential, the best we can do is make degree new connections,
+		// each between a forthcoming H and an already placed H.
+		// If degree is greater than potential, we can make potential many of these connections,
+		// and then with the remaining degree, we can make connections between two forthcoming Hs.
+		// Each of these connections uses up 2 degree, and we have (degree-newp) degree left,
+		// so the number of bonus H-H connections is (degree-newp)/2.
+		int const delta = degree < newp ? degree : newp + (degree - newp) / 2;
 		if (newscore + delta >= MaxScore) {
 #endif
 			// Place this amino acid.
