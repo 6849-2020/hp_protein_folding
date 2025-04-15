@@ -194,12 +194,12 @@ vector<Board> Solutions;
 int verbosity = 1;
 
 void Search(
-	int index,        // index of the next amino acid to be placed
-	int fromY,        // y coordinate of last placed amino acid
-	int fromX,        // x coordinate of last placed amino acid
-	int score,        // score of placed amino acids so far
-	int potential,    // roughly the number of empty squares that neighbor H amino acids. only used for pruning
-	bool turned       // indicates if the current pattern has broken mirror symmetry yet
+	unsigned int index, // index of the next amino acid to be placed
+	int fromY,          // y coordinate of last placed amino acid
+	int fromX,          // x coordinate of last placed amino acid
+	int score,          // score of placed amino acids so far
+	int potential,      // roughly the number of empty squares that neighbor H amino acids. only used for pruning
+	bool turned         // indicates if the current pattern has broken mirror symmetry yet
 );
 
 // Counts the number of Hs and empty squares appearing in the four squares that neighbor (x, y).
@@ -253,10 +253,11 @@ int main(int argc, const char *argv[]) {
 		// These are the coordinates of amino acid 1 (i.e. the most recently placed amino acid).
 		y1,
 		x1,
-		// H-H has score 1, all other two amino acid chains have score 0.
-		(Pattern[0] == 'H' && Pattern[1] == 'H') ? 1 : 0,
-		// Each amino acid could potentially have Board::NDirs - 1 additional H neighbors.
-		(Board::NDirs - 1) * ((Pattern[0] == 'H' ? 1 : 0) + (Pattern[1] == 'H' ? 1 : 0)),
+		// Chain-internal H-H adjacencies don't count, so we're always at score 0 at this point.
+		0,
+		// Number of additional H neighbors each amino acid could potentially have.
+		// (wrong if the chain has length 2, but who cares lol)
+		(Pattern[0] == 'H' ? (Board::NDirs - 1) : 0) + (Pattern[1] == 'H' ? (Board::NDirs - 2) : 0),
 		// So far all amino acids are in a straight line, so we haven't broken mirror symmetry.
 		false
 	);
@@ -273,7 +274,7 @@ int main(int argc, const char *argv[]) {
 
 
 void Search(
-	int index,
+	unsigned int index,
 	int fromY,
 	int fromX,
 	int score,
@@ -330,6 +331,10 @@ void Search(
 		int hneighbors, emptyneighbors;
 		CountNeighbors(newx, newy, hneighbors, emptyneighbors);
 
+		// Subtract 1 from effective H neighbors if the previous amino acid was an H,
+		// since we don't count chain-internal H-H connections.
+		hneighbors -= (Pattern[index-1] == 'H');
+
 		// The new score is the old one plus the number of H neighbors (if we're placing an H now).
 		int newscore = score + hneighbors * (Pattern[index] == 'H');
 
@@ -337,7 +342,7 @@ void Search(
 		// - We subtract the number of H neighbors, since we are placing an amino acid now that
 		//   either gains the point or doesn't.
 		// - If this node is an H node, we add the number of empty neighbors.
-		int newp = potential + emptyneighbors * (Pattern[index] == 'H') - hneighbors;
+		int newp = potential - hneighbors + emptyneighbors * (Pattern[index] == 'H');
 
 #ifdef USE_PRUNING
 		// Check if we just isolated an empty space.
@@ -363,17 +368,18 @@ void Search(
 		}
 
 		// Compute an upper bound of the points we could still add to our score.
-		// Note that we are double counting some things here.
+		// TODO: this is O(n) when it could be O(1)
 		int degree = 0;
-		for (int i = index + 1; i < Pattern.size(); ++i) {
+		for (unsigned int i = index + 1; i < Pattern.size(); ++i) {
 			if (Pattern[i] == 'H') {
-				degree += (Board::NDirs - 2) + (Pattern[i - 1] == 'H') +
-					(i == Pattern.size() - 1 ? 1 : Pattern[i + 1] == 'H');
+				degree += Board::NDirs - 2;
 			}
+		}
+		if (Pattern[Pattern.size() - 1] == 'H') {
+			degree += 1;
 		}
 
 		// Only place an amino acid here if it looks possible to match or beat MaxScore.
-		// TODO explain the condition
 		int const delta = (degree < newp) ? degree : ((degree - newp) / 2 + newp);
 		if (newscore + delta >= MaxScore) {
 #endif
