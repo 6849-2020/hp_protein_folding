@@ -21,6 +21,7 @@
 #include <limits>
 #include <stdlib.h>
 #include <chrono>
+#include <algorithm>
 
 using namespace std;
 
@@ -199,6 +200,7 @@ void Search(
 	int fromX,          // x coordinate of last placed amino acid
 	int score,          // score of placed amino acids so far
 	int potential,      // roughly the number of empty squares that neighbor H amino acids. only used for pruning
+	int degree,         // roughly twice the number of Hs left. only used for pruning
 	bool turned         // indicates if the current pattern has broken mirror symmetry yet
 );
 
@@ -279,6 +281,7 @@ void Search(
 	int fromX,
 	int score,
 	int potential,
+	int degree,
 	bool turned
 ) {
 	// Print some partial foldings if we're in verbose mode.
@@ -344,6 +347,9 @@ void Search(
 		// - If this node is an H node, we add the number of empty neighbors.
 		int newp = potential - hneighbors + emptyneighbors * (Pattern[index] == 'H');
 
+		// The new degree just goes down a tick if we placed an H.
+		int newd = degree - (Board::NDirs - 2) * (Pattern[index] == 'H');
+
 #ifdef USE_PRUNING
 		// Check if we just isolated an empty space.
 		// This reduces our new potential, since even though there's an empty cell next to an H, we
@@ -367,18 +373,6 @@ void Search(
 			}
 		}
 
-		// Compute an upper bound of the points we could still add to our score.
-		// TODO: this is O(n) when it could be O(1)
-		int degree = 0;
-		for (unsigned int i = index + 1; i < Pattern.size(); ++i) {
-			if (Pattern[i] == 'H') {
-				degree += Board::NDirs - 2;
-			}
-		}
-		if (Pattern[Pattern.size() - 1] == 'H') {
-			degree += 1;
-		}
-
 		// Only place an amino acid here if it looks possible to match or beat MaxScore.
 		// If degree is smaller than potential, the best we can do is make degree new connections,
 		// each between a forthcoming H and an already placed H.
@@ -386,7 +380,7 @@ void Search(
 		// and then with the remaining degree, we can make connections between two forthcoming Hs.
 		// Each of these connections uses up 2 degree, and we have (degree-newp) degree left,
 		// so the number of bonus H-H connections is (degree-newp)/2.
-		int const delta = degree < newp ? degree : newp + (degree - newp) / 2;
+		int const delta = newd < newp ? newd : newp + (newd - newp) / 2;
 		if (newscore + delta >= MaxScore) {
 #endif
 			// Place this amino acid.
@@ -396,7 +390,7 @@ void Search(
 			// Recurse.
 			// We break mirror symmetry the first time we place an amino acid not along direction 0.
 			// TODO: It would probably run faster if we converted recursion to iteration.
-			Search(index + 1, newy, newx, newscore, newp, turned || dir != 0);
+			Search(index + 1, newy, newx, newscore, newp, newd, turned || dir != 0);
 
 			// Remove this amino acid.
 			TheBoard.erase_link(fromY, fromX, dir);
