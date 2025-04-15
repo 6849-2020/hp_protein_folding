@@ -198,7 +198,7 @@ void Search(
 	int fromY,        // y coordinate of last placed amino acid
 	int fromX,        // x coordinate of last placed amino acid
 	int score,        // score of placed amino acids so far
-	int potential,    // roughly the number of empty squares that neighbor H amino acids
+	int potential,    // roughly the number of empty squares that neighbor H amino acids. only used for pruning
 	bool turned       // indicates if the current pattern has broken mirror symmetry yet
 );
 
@@ -330,15 +330,16 @@ void Search(
 		int hneighbors, emptyneighbors;
 		CountNeighbors(newx, newy, hneighbors, emptyneighbors);
 
+		// The new score is the old one plus the number of H neighbors (if we're placing an H now).
+		int newscore = score + hneighbors * (Pattern[index] == 'H');
+
 		// The new potential is the old one with two changes.
 		// - We subtract the number of H neighbors, since we are placing an amino acid now that
 		//   either gains the point or doesn't.
 		// - If this node is an H node, we add the number of empty neighbors.
 		int newp = potential + emptyneighbors * (Pattern[index] == 'H') - hneighbors;
 
-		// The new score is the old one plus the number of H neighbors (if we're placing an H now).
-		int newscore = score + hneighbors * (Pattern[index] == 'H');
-
+#ifdef USE_PRUNING
 		// Check if we just isolated an empty space.
 		// This reduces our new potential, since even though there's an empty cell next to an H, we
 		// couldn't possibly fold the protein chain to fill it. A potential improvement to the
@@ -366,22 +367,16 @@ void Search(
 		int degree = 0;
 		for (int i = index + 1; i < Pattern.size(); ++i) {
 			if (Pattern[i] == 'H') {
-				degree += (Board::NDirs - 2) + (Pattern[i - 1] == 'H') + (Pattern[(i + 1) % Pattern.size()] == 'H');
+				degree += (Board::NDirs - 2) + (Pattern[i - 1] == 'H') +
+					(i == Pattern.size() - 1 ? 1 : Pattern[i + 1] == 'H');
 			}
 		}
 
 		// Only place an amino acid here if it looks possible to match or beat MaxScore.
-		// Q: Are there false negatives? I.e. configurations that we throw away that would achieve
-		//    the max score?
-		// Q: What other bounds are worth trying?
-		// Q: What exactly is the logic of the (degree < newp) condition? Intuitively, it seems to
-		//    say that if we have a lot left to go, it's worth dividing out so that we're not double
-		//    counting things. But I haven't thought this through to confirm that it can't add false
-		//    negatives.
-		//    Related note: I think the factor of one half is accounting for double counting.
-		//    If it's not, perhaps it should be changed for hexagonal boards.
+		// TODO explain the condition
 		int const delta = (degree < newp) ? degree : ((degree - newp) / 2 + newp);
 		if (newscore + delta >= MaxScore) {
+#endif
 			// Place this amino acid.
 			TheBoard(newy, newx) = Pattern[index];
 			TheBoard.draw_link(fromY, fromX, dir);
@@ -394,7 +389,9 @@ void Search(
 			// Remove this amino acid.
 			TheBoard.erase_link(fromY, fromX, dir);
 			TheBoard(newy, newx) = ' ';
+#ifdef USE_PRUNING
 		}
+#endif
 	}
 }
 
