@@ -231,7 +231,7 @@ int main(int argc, const char *argv[]) {
 	if (argc > 3) {
 		verbosity = atoi(argv[3]);
 	}
-	cout << "Folding " << Pattern << " for scores >= " << MaxScore << endl;
+	if (verbosity >= 0) cout << "Folding " << Pattern << " for scores >= " << MaxScore << endl;
 
 	// Initialize the board. Every square starts blank.
 	TheBoard.clear();
@@ -260,18 +260,24 @@ int main(int argc, const char *argv[]) {
 		// Number of additional H neighbors each amino acid could potentially have.
 		// (wrong if the chain has length 2, but who cares lol)
 		(Pattern[0] == 'H' ? (Board::NDirs - 1) : 0) + (Pattern[1] == 'H' ? (Board::NDirs - 2) : 0),
+		// Number of additional H neighbors future amino acids could potentially have.
+		(Board::NDirs - 2) * std::count(Pattern.begin()+2, Pattern.end(), 'H') + (Pattern[Pattern.length()-1] == 'H'),
 		// So far all amino acids are in a straight line, so we haven't broken mirror symmetry.
 		false
 	);
 	auto stop = std::chrono::high_resolution_clock::now();
 	float elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
 
-	cout << "Found " << Solutions.size() << " optimal solutions (score " << MaxScore << "):\n" << endl;
-	for (auto it = Solutions.begin(); it != Solutions.end(); ++it) {
-		it->print();
+	if (verbosity >= 0) {
+		cout << "Found " << Solutions.size() << " optimal solutions (score " << MaxScore << "):\n" << endl;
+		for (auto it = Solutions.begin(); it != Solutions.end(); ++it) {
+			it->print();
+		}
+		cout << "Found " << Solutions.size() << " optimal solutions (score " << MaxScore << ").\n";
+		cout << "Runtime: " << elapsed << " milliseconds\n\n";
+	} else {
+		cout << Solutions.size() << " " << MaxScore << "\n";
 	}
-	cout << "Found " << Solutions.size() << " optimal solutions (score " << MaxScore << ").\n";
-	cout << "Runtime: " << elapsed << " milliseconds\n\n";
 }
 
 
