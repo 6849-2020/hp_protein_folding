@@ -208,7 +208,15 @@ void Search(
 void CountNeighbors(int x, int y, int &numH, int &numEmpty);
 
 bool operator< (const Board& a, const Board& b){
-	return a(0, 0) < b(0, 0);
+	string s = "";
+	string s2 = "";
+	for(int i = 0; i < MAXDIM; i++){
+		for(int j = 0; j < MAXDIM; j++){
+			s += a(i, j);
+			s2 += b(i, j);
+		}
+	}
+	return s < s2;
 }
 
 
