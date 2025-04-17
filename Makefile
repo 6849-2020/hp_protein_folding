@@ -1,5 +1,5 @@
 CXX = g++
-FLAGS = -std=c++11 -Wall
+FLAGS = -std=c++20 -Wall
 
 .PHONY: all clean
 all: hp_folder debug_hp_folder tri_hp_folder debug_tri_hp_folder no_prune_hp_folder

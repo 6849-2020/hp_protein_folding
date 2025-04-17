@@ -22,6 +22,8 @@
 #include <stdlib.h>
 #include <chrono>
 #include <algorithm>
+#include <set>
+#include <sstream>
 
 using namespace std;
 
@@ -41,14 +43,14 @@ public:
 	// These allow us to write TheBoard(row, col).
 	char operator()(int row, int col) const {
 		if (row < 0 || MAXDIM <= row || col < 0 || MAXDIM <= col) {
-			cout << "Error: TheBoard is too small. Increase MAXDIM.\n";
+			cerr << "Error: TheBoard is too small. Increase MAXDIM.\n";
 			exit(1);
 		}
 		return data[row][col];
 	}
 	char& operator()(int row, int col) {
 		if (row < 0 || MAXDIM <= row || col < 0 || MAXDIM <= col) {
-			cout << "Error: TheBoard is too small. Increase MAXDIM.\n";
+			cerr << "Error: TheBoard is too small. Increase MAXDIM.\n";
 			exit(1);
 		}
 		return data[row][col];
@@ -80,8 +82,8 @@ public:
 		data[link_y][link_x] = ' ';
 	}
 
-	// Prints the board to cout as ASCII art.
-	void print();
+	// Prints the board as ASCII art.
+	void print(std::ostream &out);
 
 	static constexpr int NDirs = 4;
 
@@ -120,7 +122,7 @@ public:
 		row *= 2;
 		col *= 2;
 		if (row < 0 || 2 * MAXDIM <= row || col < 0 || 2 * MAXDIM <= col) {
-			cout << "Error: TheBoard is too small. Increase MAXDIM.\n";
+			cerr << "Error: TheBoard is too small. Increase MAXDIM.\n";
 			exit(1);
 		}
 		return data[row][col];
@@ -129,7 +131,7 @@ public:
 		row *= 2;
 		col *= 2;
 		if (row < 0 || 2 * MAXDIM <= row || col < 0 || 2 * MAXDIM <= col) {
-			cout << "Error: board is too smal. Increase MAXDIM.\n";
+			cerr << "Error: board is too smal. Increase MAXDIM.\n";
 			exit(1);
 		}
 		return data[row][col];
@@ -148,7 +150,7 @@ public:
 	void draw_link(int y, int x, int dir);
 	void erase_link(int y, int x, int dir);
 
-	void print();
+	void print(std::ostream &out);
 
 	static constexpr int NDirs = 6;
 
@@ -265,19 +267,33 @@ int main(int argc, const char *argv[]) {
 		// So far all amino acids are in a straight line, so we haven't broken mirror symmetry.
 		false
 	);
+
 	auto stop = std::chrono::high_resolution_clock::now();
 	float elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
 
-	if (verbosity >= 0) {
-		cout << "Found " << Solutions.size() << " optimal solutions (score " << MaxScore << "):\n" << endl;
-		for (auto it = Solutions.begin(); it != Solutions.end(); ++it) {
-			it->print();
+	// we need to filter out duplicate solutions if the input is a palindrome
+	if (std::equal(Pattern.begin(), Pattern.begin() + Pattern.length()/2, Pattern.rbegin())) {
+		auto seen = std::set<std::string>();
+		std::erase_if(Solutions, [&](auto sol) {
+			std::ostringstream os;
+			sol.print(os);
+			auto str = os.str();
+			if (seen.contains(str)) return true;
+			seen.insert(str);
+			if (verbosity >= 0) std::cout << str;
+			return false;
+		});
+	} else if (verbosity >= 0) {
+		for (auto sol : Solutions) {
+			sol.print(std::cout);
 		}
+	}
+
+	if (verbosity >= 0) {
 		cout << "Found " << Solutions.size() << " optimal solutions (score " << MaxScore << ").\n";
 		cout << "Runtime: " << elapsed << " milliseconds\n\n";
-	} else {
-		cout << Solutions.size() << " " << MaxScore << "\n";
-	}
+	} else cout << Solutions.size() << " " << MaxScore << "\n";
+
 }
 
 
@@ -295,7 +311,7 @@ void Search(
 		cout << "Interim...\n";
 		cout << "Score = " << score << "\n";
 		cout << "Potential = " << potential << "\n";
-		TheBoard.print();
+		TheBoard.print(cout);
 	}
 
 	// Check if we've placed all amino acids.
@@ -307,7 +323,7 @@ void Search(
 			MaxScore = score;
 			if (verbosity >= 1) {
 				cout << "New max score: " << MaxScore << '\n';
-				TheBoard.print();
+				TheBoard.print(cout);
 			}
 		}
 
@@ -316,7 +332,7 @@ void Search(
 			Solutions.push_back(TheBoard);
 			if (verbosity >= 2) {
 				cout << "Score: " << score << "\n";
-				TheBoard.print();
+				TheBoard.print(cout);
 			}
 		}
 
@@ -429,7 +445,7 @@ void CountNeighbors(int x, int y, int &numH, int &numEmpty) {
 }
 
 
-void SquareBoard::print() {
+void SquareBoard::print(std::ostream &out) {
 	auto const row_is_empty = [&](int row) {
 		for (int i = 0; i < MAXDIM; ++i) {
 			if (data[row][i] != ' ') {
@@ -477,18 +493,18 @@ void SquareBoard::print() {
 
 	int const n_cols = maxx - minx + 1;
 
-	cout << ' ' << string(n_cols, '-') << '\n';
+	out << ' ' << string(n_cols, '-') << '\n';
 	for (int y = miny; y <= maxy; ++y) {
-		cout << '|';
+		out << '|';
 		for (int x = minx; x <= maxx; ++x) {
-			cout << data[y][x];
+			out << data[y][x];
 		}
-		cout << "|\n";
+		out << "|\n";
 	}
-	cout << ' ' << string(n_cols, '-') << '\n';
+	out << ' ' << string(n_cols, '-') << '\n';
 }
 
-void HexagonalBoard::print() {
+void HexagonalBoard::print(std::ostream &out) {
 	auto const row_is_empty = [&](int row) {
 		for (int i = 0; i < 2 * MAXDIM; ++i) {
 			if (data[row][i] != ' ') {
@@ -536,15 +552,15 @@ void HexagonalBoard::print() {
 
 	int const n_cols = maxx - minx + 1;
 
-	cout << ' ' << string(n_cols, '-') << '\n';
+	out << ' ' << string(n_cols, '-') << '\n';
 	for (int y = miny; y <= maxy; ++y) {
-		cout << '|';
+		out << '|';
 		for (int x = minx; x <= maxx; ++x) {
-			cout << data[y][x];
+			out << data[y][x];
 		}
-		cout << "|\n";
+		out << "|\n";
 	}
-	cout << ' ' << string(n_cols, '-') << '\n';
+	out << ' ' << string(n_cols, '-') << '\n';
 }
 
 void HexagonalBoard::draw_link(int y, int x, int dir) {
