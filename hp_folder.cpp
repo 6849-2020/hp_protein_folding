@@ -21,7 +21,7 @@
 #include <limits>
 #include <stdlib.h>
 #include <chrono>
-#include <algorithm>
+#include <set>
 
 using namespace std;
 
@@ -186,7 +186,7 @@ string Pattern;
 int MaxScore = 0;
 
 // This records copies of all solutions we've found with the maximum score.
-vector<Board> Solutions;
+set<Board> Solutions;
 
 // 0 => no intermediate output
 // 1 => print when we find a folding that beats our current best score
@@ -195,18 +195,21 @@ vector<Board> Solutions;
 int verbosity = 1;
 
 void Search(
-	unsigned int index, // index of the next amino acid to be placed
-	int fromY,          // y coordinate of last placed amino acid
-	int fromX,          // x coordinate of last placed amino acid
-	int score,          // score of placed amino acids so far
-	int potential,      // roughly the number of empty squares that neighbor H amino acids. only used for pruning
-	int degree,         // roughly twice the number of Hs left. only used for pruning
-	bool turned         // indicates if the current pattern has broken mirror symmetry yet
+	int index,        // index of the next amino acid to be placed
+	int fromY,        // y coordinate of last placed amino acid
+	int fromX,        // x coordinate of last placed amino acid
+	int score,        // score of placed amino acids so far
+	int potential,    // roughly the number of empty squares that neighbor H amino acids
+	bool turned       // indicates if the current pattern has broken mirror symmetry yet
 );
 
 // Counts the number of Hs and empty squares appearing in the four squares that neighbor (x, y).
 // Note that this takes x first, then y, unlike the other methods in this file.
 void CountNeighbors(int x, int y, int &numH, int &numEmpty);
+
+bool operator< (const Board& a, const Board& b){
+	return a(0, 0) < b(0, 0);
+}
 
 
 int main(int argc, const char *argv[]) {
@@ -231,7 +234,7 @@ int main(int argc, const char *argv[]) {
 	if (argc > 3) {
 		verbosity = atoi(argv[3]);
 	}
-	if (verbosity >= 0) cout << "Folding " << Pattern << " for scores >= " << MaxScore << endl;
+	cout << "Folding " << Pattern << " for scores >= " << MaxScore << endl;
 
 	// Initialize the board. Every square starts blank.
 	TheBoard.clear();
@@ -255,39 +258,31 @@ int main(int argc, const char *argv[]) {
 		// These are the coordinates of amino acid 1 (i.e. the most recently placed amino acid).
 		y1,
 		x1,
-		// Chain-internal H-H adjacencies don't count, so we're always at score 0 at this point.
-		0,
-		// Number of additional H neighbors each amino acid could potentially have.
-		// (wrong if the chain has length 2, but who cares lol)
-		(Pattern[0] == 'H' ? (Board::NDirs - 1) : 0) + (Pattern[1] == 'H' ? (Board::NDirs - 2) : 0),
-		// Number of additional H neighbors future amino acids could potentially have.
-		(Board::NDirs - 2) * std::count(Pattern.begin()+2, Pattern.end(), 'H') + (Pattern[Pattern.length()-1] == 'H'),
+		// H-H has score 1, all other two amino acid chains have score 0.
+		(Pattern[0] == 'H' && Pattern[1] == 'H') ? 1 : 0,
+		// Each amino acid could potentially have Board::NDirs - 1 additional H neighbors.
+		(Board::NDirs - 1) * ((Pattern[0] == 'H' ? 1 : 0) + (Pattern[1] == 'H' ? 1 : 0)),
 		// So far all amino acids are in a straight line, so we haven't broken mirror symmetry.
 		false
 	);
 	auto stop = std::chrono::high_resolution_clock::now();
 	float elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
 
-	if (verbosity >= 0) {
-		cout << "Found " << Solutions.size() << " optimal solutions (score " << MaxScore << "):\n" << endl;
-		for (auto it = Solutions.begin(); it != Solutions.end(); ++it) {
-			it->print();
-		}
-		cout << "Found " << Solutions.size() << " optimal solutions (score " << MaxScore << ").\n";
-		cout << "Runtime: " << elapsed << " milliseconds\n\n";
-	} else {
-		cout << Solutions.size() << " " << MaxScore << "\n";
+	cout << "Found " << Solutions.size() << " optimal solutions (score " << MaxScore << "):\n" << endl;
+	for(auto it : Solutions){
+		it.print();
 	}
+	cout << "Found " << Solutions.size() << " optimal solutions (score " << MaxScore << ").\n";
+	cout << "Runtime: " << elapsed << " milliseconds\n\n";
 }
 
 
 void Search(
-	unsigned int index,
+	int index,
 	int fromY,
 	int fromX,
 	int score,
 	int potential,
-	int degree,
 	bool turned
 ) {
 	// Print some partial foldings if we're in verbose mode.
@@ -303,7 +298,7 @@ void Search(
 		// Update MaxScore if this is a new record.
 		if (score > MaxScore) {
 			Solutions.clear();
-			Solutions.push_back(TheBoard);
+			Solutions.insert(TheBoard);
 			MaxScore = score;
 			if (verbosity >= 1) {
 				cout << "New max score: " << MaxScore << '\n';
@@ -313,7 +308,7 @@ void Search(
 
 		// Save the solution if it achieves the maximum score.
 		else if (score == MaxScore) {
-			Solutions.push_back(TheBoard);
+			Solutions.insert(TheBoard);
 			if (verbosity >= 2) {
 				cout << "Score: " << score << "\n";
 				TheBoard.print();
@@ -340,23 +335,15 @@ void Search(
 		int hneighbors, emptyneighbors;
 		CountNeighbors(newx, newy, hneighbors, emptyneighbors);
 
-		// Subtract 1 from effective H neighbors if the previous amino acid was an H,
-		// since we don't count chain-internal H-H connections.
-		hneighbors -= (Pattern[index-1] == 'H');
-
-		// The new score is the old one plus the number of H neighbors (if we're placing an H now).
-		int newscore = score + hneighbors * (Pattern[index] == 'H');
-
 		// The new potential is the old one with two changes.
 		// - We subtract the number of H neighbors, since we are placing an amino acid now that
 		//   either gains the point or doesn't.
 		// - If this node is an H node, we add the number of empty neighbors.
-		int newp = potential - hneighbors + emptyneighbors * (Pattern[index] == 'H');
+		int newp = potential + emptyneighbors * (Pattern[index] == 'H') - hneighbors;
 
-		// The new degree just goes down a tick if we placed an H.
-		int newd = degree - (Board::NDirs - 2) * (Pattern[index] == 'H');
+		// The new score is the old one plus the number of H neighbors (if we're placing an H now).
+		int newscore = score + hneighbors * (Pattern[index] == 'H');
 
-#ifdef USE_PRUNING
 		// Check if we just isolated an empty space.
 		// This reduces our new potential, since even though there's an empty cell next to an H, we
 		// couldn't possibly fold the protein chain to fill it. A potential improvement to the
@@ -379,16 +366,27 @@ void Search(
 			}
 		}
 
+		// Compute an upper bound of the points we could still add to our score.
+		// Note that we are double counting some things here.
+		int degree = 0;
+		for (int i = index + 1; i < Pattern.size(); ++i) {
+			if (Pattern[i] == 'H') {
+				degree += (Board::NDirs - 2) + (Pattern[i - 1] == 'H') + (Pattern[(i + 1) % Pattern.size()] == 'H');
+			}
+		}
+
 		// Only place an amino acid here if it looks possible to match or beat MaxScore.
-		// If degree is smaller than potential, the best we can do is make degree new connections,
-		// each between a forthcoming H and an already placed H.
-		// If degree is greater than potential, we can make potential many of these connections,
-		// and then with the remaining degree, we can make connections between two forthcoming Hs.
-		// Each of these connections uses up 2 degree, and we have (degree-newp) degree left,
-		// so the number of bonus H-H connections is (degree-newp)/2.
-		int const delta = newd < newp ? newd : newp + (newd - newp) / 2;
+		// Q: Are there false negatives? I.e. configurations that we throw away that would achieve
+		//    the max score?
+		// Q: What other bounds are worth trying?
+		// Q: What exactly is the logic of the (degree < newp) condition? Intuitively, it seems to
+		//    say that if we have a lot left to go, it's worth dividing out so that we're not double
+		//    counting things. But I haven't thought this through to confirm that it can't add false
+		//    negatives.
+		//    Related note: I think the factor of one half is accounting for double counting.
+		//    If it's not, perhaps it should be changed for hexagonal boards.
+		int const delta = (degree < newp) ? degree : ((degree - newp) / 2 + newp);
 		if (newscore + delta >= MaxScore) {
-#endif
 			// Place this amino acid.
 			TheBoard(newy, newx) = Pattern[index];
 			TheBoard.draw_link(fromY, fromX, dir);
@@ -396,14 +394,12 @@ void Search(
 			// Recurse.
 			// We break mirror symmetry the first time we place an amino acid not along direction 0.
 			// TODO: It would probably run faster if we converted recursion to iteration.
-			Search(index + 1, newy, newx, newscore, newp, newd, turned || dir != 0);
+			Search(index + 1, newy, newx, newscore, newp, turned || dir != 0);
 
 			// Remove this amino acid.
 			TheBoard.erase_link(fromY, fromX, dir);
 			TheBoard(newy, newx) = ' ';
-#ifdef USE_PRUNING
 		}
-#endif
 	}
 }
 
