@@ -357,6 +357,8 @@ void Search(
 		int newd = degree - (Board::NDirs - 2) * (Pattern[index] == 'H');
 
 #ifdef USE_PRUNING
+
+#ifdef ADVANCED_PRUNING
 		// Check if we just isolated an empty space.
 		// This reduces our new potential, since even though there's an empty cell next to an H, we
 		// couldn't possibly fold the protein chain to fill it. A potential improvement to the
@@ -378,6 +380,7 @@ void Search(
 				}
 			}
 		}
+#endif
 
 		// Only place an amino acid here if it looks possible to match or beat MaxScore.
 		// If degree is smaller than potential, the best we can do is make degree new connections,
